@@ -1,5 +1,8 @@
 # Orbo
 
+![Orbo](https://raw.githubusercontent.com/DigitecGalaxus/orbo/refs/heads/main/logo.jpg)
+
+
 Minimal, lazy-loaded global state for React. Zero nested providers, true bundle splitting, useState-familiar API
 
 ## Why Orbo?
@@ -22,7 +25,7 @@ Orbo takes a different approach: **What if global state was as easy as useState,
 Built from the ground up for modern React applications that demand both performance and developer experience. 140 lines of code. Zero dependencies. TypeScript-first
 
 > [!WARNING]
-> Orbo is designed specifically for **singleton global states** (dark mode, user preferences, feature flags). It is **not a full state management solution** like Redux or Zustand
+> Orbo is designed specifically for **singleton global states** (dark mode, user preferences, feature flags, ...) -> It is **not a full state management solution** like Redux or Zustand
 
 ## Features
 
@@ -103,7 +106,7 @@ function App({ pageProps, cookies }) {
 }
 ```
 
-The dark mode logic is completely decoupled from your app shell. Components that don't use dark mode never load its code. New developers can understand and modify the feature without touching `_app.tsx`
+In this example the dark mode logic is completely decoupled from your app shell. Components that don't use dark mode never load its code. New developers can understand and modify the feature without touching `_app.tsx`
 
 ## TypeScript Support
 
