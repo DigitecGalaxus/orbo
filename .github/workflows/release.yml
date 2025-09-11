@@ -1,5 +1,9 @@
 name: Release
 
+permissions:
+  id-token: write
+  contents: read
+  
 on:
   push:
     branches:
@@ -55,4 +59,3 @@ jobs:
           title: Release new version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
