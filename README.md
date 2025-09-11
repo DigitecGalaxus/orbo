@@ -1,5 +1,8 @@
 # Orbo
 
+![Orbo](https://raw.githubusercontent.com/DigitecGalaxus/orbo/refs/heads/main/logo.jpg)
+
+
 Minimal, lazy-loaded global state for React. Zero nested providers, true bundle splitting, useState-familiar API
 
 ## Why Orbo?
