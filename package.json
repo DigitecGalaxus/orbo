@@ -1,0 +1,31 @@
+{
+  "name": "orbo-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal, lazy-loaded global state for React. Zero nested providers, true bundle splitting, useState-familiar API.",
+  "author": "Jan Nicklas",
+  "license": "MIT",
+  "homepage": "https://github.com/DigitecGalaxus/orbo#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DigitecGalaxus/orbo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DigitecGalaxus/orbo/issues"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev:example": "pnpm --filter example-dark-mode dev",
+    "test": "pnpm --filter orbo test",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "typescript": "^5.9.2"
+  }
+}
