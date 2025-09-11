@@ -1,6 +1,6 @@
 {
   "name": "orbo",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Minimal, lazy-loaded global state for React. Zero nested providers, true bundle splitting, useState-familiar API",
   "author": "Jan Nicklas",
   "license": "MIT",
