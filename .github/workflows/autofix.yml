@@ -1,0 +1,31 @@
+name: autofix.ci
+on:
+  pull_request:
+    branches-ignore: ["changeset-release/main"]
+  push:
+    branches: ["main"]
+permissions:
+  contents: read
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+          run_install: true
+
+      - name: Run Prettier
+        run: pnpm prettier
+
+      - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27

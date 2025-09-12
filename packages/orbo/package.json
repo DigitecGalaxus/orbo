@@ -31,7 +31,8 @@
   "scripts": {
     "build": "tsdown --clean",
     "dev": "tsdown --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prettier": "prettier --write \"./src/**/*.{ts,tsx,js,jsx}\""
   },
   "keywords": [
     "react",
@@ -50,6 +51,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.1.12",
+    "prettier": "^3.6.2",
     "react": "^19.1.1",
     "tsdown": "^0.9.0",
     "typescript": "^5.9.2"

@@ -19,6 +19,7 @@
     "dev:example": "pnpm --filter example-dark-mode dev",
     "test": "pnpm --filter orbo test",
     "typecheck": "pnpm -r typecheck",
+    "prettier": "pnpm run --recursive --if-present prettier",
     "clean": "pnpm -r clean",
     "changeset": "changeset",
     "version-packages": "changeset version",
