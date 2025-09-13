@@ -1,7 +1,11 @@
 import React, { useState } from "react";
 import { fireEvent, render } from "@testing-library/react";
 import { describe, test, expect, vi, afterEach } from "vitest";
-import { createGlobalState, AppContextProvider, AppContextValues } from "../index";
+import {
+  createGlobalState,
+  AppContextProvider,
+  AppContextValues,
+} from "../index";
 import { renderAndHydrate } from "./reactRendering";
 
 // Test context interfaces

@@ -56,7 +56,6 @@ describe("Orbo - globalStateMemo", () => {
       expect(result1).toBe("processed-same");
       expect(result2).toBe("processed-same");
     });
-
   });
 
   describe("Factory Function Isolation", () => {
@@ -124,8 +123,12 @@ describe("Orbo - globalStateMemo", () => {
       const context1 = { data: ["hello", "world"] };
       const context2 = { data: ["foo", "bar", "baz"] };
 
-      const result1 = memoizedFactory(context1) as ReturnType<typeof complexComputation>;
-      const result2 = memoizedFactory(context2) as ReturnType<typeof complexComputation>;
+      const result1 = memoizedFactory(context1) as ReturnType<
+        typeof complexComputation
+      >;
+      const result2 = memoizedFactory(context2) as ReturnType<
+        typeof complexComputation
+      >;
 
       expect(complexComputation).toHaveBeenCalledTimes(2);
       expect(result1.processedData).toEqual(["HELLO", "WORLD"]);
@@ -141,6 +144,5 @@ describe("Orbo - globalStateMemo", () => {
       expect(result1).toBe(result1b); // Same object reference
       expect(result2).toBe(result2b); // Same object reference
     });
-
   });
 });
