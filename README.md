@@ -1,5 +1,7 @@
 # Orbo
 
+[![npm version](https://img.shields.io/npm/v/orbo)](https://www.npmjs.com/package/orbo)
+
 ![Orbo](https://raw.githubusercontent.com/DigitecGalaxus/orbo/refs/heads/main/logo.jpg)
 
 

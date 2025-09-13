@@ -1,4 +1,4 @@
-name: Typecheck
+name: Checks
 
 on:
   push:
@@ -28,6 +28,9 @@ jobs:
     
     - name: Run build
       run: pnpm run build
-    
+
+    - name: Run tests
+      run: pnpm test:run
+
     - name: Run typecheck
       run: pnpm run typecheck
