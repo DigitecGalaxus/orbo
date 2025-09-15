@@ -116,6 +116,7 @@ Orbo provides compile-time safety through module augmentation (same pattern as s
 
 ```typescript
 // types.ts
+// Import to enable module augmentation
 import 'orbo';
 declare module "orbo" {
   interface AppContextValues {
