@@ -2,7 +2,7 @@
   "name": "orbo-monorepo",
   "version": "0.0.1",
   "private": true,
-  "description": "Minimal, lazy-loaded global state for React. Zero nested providers, true bundle splitting, useState-familiar API.",
+  "description": "Minimal, lazy-initialized global state for React. Zero nested providers, true bundle splitting, useState-familiar API.",
   "author": "Jan Nicklas",
   "license": "MIT",
   "homepage": "https://github.com/DigitecGalaxus/orbo#readme",

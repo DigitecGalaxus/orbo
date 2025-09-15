@@ -5,7 +5,7 @@
 ![Orbo](https://raw.githubusercontent.com/DigitecGalaxus/orbo/refs/heads/main/logo.jpg)
 
 
-Minimal, lazy-loaded global state for React. Zero nested providers, true bundle splitting, useState-familiar API
+Minimal, lazy-initialized global state for React. Zero nested providers, true bundle splitting, useState-familiar API
 
 ## Why Orbo?
 
@@ -116,6 +116,7 @@ Orbo provides compile-time safety through module augmentation (same pattern as s
 
 ```typescript
 // types.ts
+import 'orbo';
 declare module "orbo" {
   interface AppContextValues {
     cookies: { darkMode?: string };
