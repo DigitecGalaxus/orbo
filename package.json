@@ -18,6 +18,7 @@
     "build": "pnpm -r build",
     "dev:example": "pnpm --filter example-dark-mode dev",
     "test": "pnpm --filter orbo test",
+    "test:run": "pnpm --filter orbo test:run",
     "typecheck": "pnpm -r typecheck",
     "prettier": "pnpm run --recursive --if-present prettier",
     "clean": "pnpm -r clean",

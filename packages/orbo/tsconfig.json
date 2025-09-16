@@ -18,6 +18,5 @@
     "declaration": true,
     "declarationMap": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["dist", "**/*.test.tsx", "**/*.test.ts"]
+  "include": ["src/**/*", "src/**/*.test.tsx"],
 }

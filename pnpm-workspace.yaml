@@ -1,6 +1,9 @@
 packages:
-  - "packages/*"
-  - "examples/*"
+  - packages/*
+  - examples/*
 
 ignoredBuiltDependencies:
   - esbuild
+
+onlyBuiltDependencies:
+  - rolldown
