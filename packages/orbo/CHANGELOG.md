@@ -1,5 +1,11 @@
 # orbo
 
+## 1.0.2
+
+### Patch Changes
+
+- 11840b8: update documentation
+
 ## 1.0.1
 
 ### Patch Changes
