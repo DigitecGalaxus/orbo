@@ -678,4 +678,120 @@ describe("Orbo - createGlobalState", () => {
       ).toHaveTextContent("light");
     });
   });
+
+  describe("onMount Cleanup Behavior", () => {
+    test("cleanup is NOT called when cleanupOnUnmount is false", async () => {
+      const cleanupSpy = vi.fn();
+      const [useCounter] = createGlobalState({
+        initialState: () => 0,
+        onMount: () => {
+          return cleanupSpy;
+        },
+        cleanupOnUnmount: false,
+      });
+
+      const TestComponent = () => {
+        const counter = useCounter();
+        return <div data-testid="counter">{counter}</div>;
+      };
+
+      const ParentComponent = () => {
+        const [showComponent, setShowComponent] = useState(true);
+        return (
+          <div>
+            <button
+              data-testid="toggle"
+              onClick={() => setShowComponent(!showComponent)}
+            >
+              Toggle Component
+            </button>
+            {showComponent && <TestComponent />}
+          </div>
+        );
+      };
+
+      const { container, cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <ParentComponent />
+        </GlobalStateProvider>,
+      );
+      cleanupFunctions.push(cleanup);
+
+      expect(
+        container.querySelector('[data-testid="counter"]'),
+      ).toHaveTextContent("0");
+
+      fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      expect(container.querySelector('[data-testid="counter"]')).toBeNull();
+
+      expect(cleanupSpy).not.toHaveBeenCalled();
+    });
+
+    test("cleanup only happens when last component unmounts", async () => {
+      const cleanupSpy = vi.fn();
+      const [useCounter] = createGlobalState({
+        initialState: () => 0,
+        onMount: () => {
+          return cleanupSpy;
+        },
+        cleanupOnUnmount: true,
+      });
+
+      const TestComponent = ({ id }: { id: string }) => {
+        const counter = useCounter();
+        return <div data-testid={`counter-${id}`}>{counter}</div>;
+      };
+
+      const ParentComponent = () => {
+        const [showFirst, setShowFirst] = useState(true);
+        const [showSecond, setShowSecond] = useState(true);
+        return (
+          <div>
+            <button
+              data-testid="toggle-first"
+              onClick={() => setShowFirst(!showFirst)}
+            >
+              Toggle First Component
+            </button>
+            <button
+              data-testid="toggle-second"
+              onClick={() => setShowSecond(!showSecond)}
+            >
+              Toggle Second Component
+            </button>
+            {showFirst && <TestComponent id="first" />}
+            {showSecond && <TestComponent id="second" />}
+          </div>
+        );
+      };
+
+      const { container, cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <ParentComponent />
+        </GlobalStateProvider>,
+      );
+      cleanupFunctions.push(cleanup);
+
+      expect(
+        container.querySelector('[data-testid="counter-first"]'),
+      ).toHaveTextContent("0");
+      expect(
+        container.querySelector('[data-testid="counter-second"]'),
+      ).toHaveTextContent("0");
+
+      fireEvent.click(container.querySelector('[data-testid="toggle-first"]')!);
+      expect(container.querySelector('[data-testid="counter-first"]')).toBeNull();
+      expect(
+        container.querySelector('[data-testid="counter-second"]'),
+      ).toHaveTextContent("0");
+
+      expect(cleanupSpy).not.toHaveBeenCalled();
+
+      fireEvent.click(container.querySelector('[data-testid="toggle-second"]')!);
+      expect(container.querySelector('[data-testid="counter-first"]')).toBeNull();
+      expect(container.querySelector('[data-testid="counter-second"]')).toBeNull();
+
+      expect(cleanupSpy).toHaveBeenCalledOnce();
+    });
+  });
 });

@@ -74,7 +74,7 @@ That's it. No provider nesting, no complex setup, no `_app.tsx` modifications.
 
 ## Real-World Example
 
-Here's how you'd handle a typical dark mode implementation:
+Here's how you'd handle a typical dark mode implementation with localStorage synchronization:
 
 ```tsx
 // useDarkMode.ts - lives with your component, not in _app.tsx
@@ -82,6 +82,24 @@ import { createGlobalState } from "orbo";
 
 const [useDarkMode, useSetDarkMode] = createGlobalState({
   initialState: ({ cookies }) => cookies.darkMode === "true",
+  onMount: (setState, initialState) => {
+    // Watch for system dark mode preference changes
+    if (typeof window !== "undefined") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+      const handleChange = (e: MediaQueryListEvent) => {
+        setState(e.matches);
+      };
+
+      mediaQuery.addEventListener("change", handleChange);
+
+      // Return cleanup function
+      return () => {
+        mediaQuery.removeEventListener("change", handleChange);
+      };
+    }
+  },
+  cleanupOnUnmount: true, // Enable cleanup when no components use this state
 });
 
 export { useDarkMode, useSetDarkMode };
@@ -158,12 +176,21 @@ Creates a pair of hooks for reading and writing global state.
 ```tsx
 const [useValue, useSetValue] = createGlobalState({
   initialState: (initialValues) => computeInitialValue(initialValues),
+  onMount: (setState, initialState) => {
+    // Optional: sync with external sources
+    return () => {
+      // Optional: cleanup function
+    };
+  },
+  cleanupOnUnmount: true, // Optional: cleanup when no components use this state
 });
 ```
 
 **Parameters:**
 
 - `config.initialState`: Function that receives initial values and returns the initial state
+- `config.onMount` *(optional)*: Function called when first component mounts. Receives `setState` and `initialState`. Can return a cleanup function
+- `config.cleanupOnUnmount` *(optional)*: When `true`, cleans up state and calls onMount cleanup when no components are using it (default: `false`)
 
 **Returns:**
 
