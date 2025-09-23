@@ -14,11 +14,11 @@ import { createContext, use, useCallback, useEffect, useState } from "react";
  * }
  * ```
  */
-export interface AppContextValues {}
+export interface GlobalContextValues {}
 
 interface GlobalStateConfig<T = unknown> {
   /** Function that receives context values and returns the initial state */
-  initialState: (appContextValues: AppContextValues) => T;
+  initialState: (appContextValues: GlobalContextValues) => T;
   /**
    * When true, automatically cleans up global state when no components are using it
    * anymore
@@ -33,7 +33,7 @@ interface GlobalStateConfig<T = unknown> {
 }
 
 interface AppContextData {
-  values: AppContextValues;
+  values: GlobalContextValues;
   /** Internal state management */
   subContexts: Map<
     GlobalStateConfig,
@@ -65,11 +65,11 @@ const AppContext = createContext<AppContextData | undefined>(undefined);
  * }
  * ```
  */
-export function AppContextProvider({
+export function GlobalContextProvider({
   initialValues: values,
   children,
 }: {
-  initialValues: AppContextValues;
+  initialValues: GlobalContextValues;
   children: React.ReactNode;
 }) {
   const [contextData] = useState(
@@ -175,7 +175,7 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
 
 const globalStateMemoCache = new WeakMap<
   Function,
-  WeakMap<AppContextValues, unknown>
+  WeakMap<GlobalContextValues, unknown>
 >();
 /**
  * Memoizes expensive computations based on context values using WeakMap caching
@@ -202,14 +202,14 @@ const globalStateMemoCache = new WeakMap<
  * - 🔄 **Cache sharing** - same factory function shares cache across multiple uses
  */
 export const globalStateMemo = <T,>(
-  factory: (values: AppContextValues) => T,
-): ((values: AppContextValues) => T) => {
+  factory: (values: GlobalContextValues) => T,
+): ((values: GlobalContextValues) => T) => {
   let contextCaches = globalStateMemoCache.get(factory);
   if (!contextCaches) {
     contextCaches = new WeakMap();
     globalStateMemoCache.set(factory, contextCaches);
   }
-  return (values: AppContextValues): T => {
+  return (values: GlobalContextValues): T => {
     if (!contextCaches.has(values)) {
       contextCaches.set(values, factory(values));
     }

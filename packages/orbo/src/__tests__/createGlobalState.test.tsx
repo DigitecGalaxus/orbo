@@ -3,25 +3,25 @@ import { fireEvent, render } from "@testing-library/react";
 import { describe, test, expect, vi, afterEach } from "vitest";
 import {
   createGlobalState,
-  AppContextProvider,
-  AppContextValues,
+  GlobalContextProvider,
+  GlobalContextValues,
 } from "../index";
 import { renderAndHydrate } from "./reactRendering";
 
 // Test context interfaces
-interface CookieContext extends AppContextValues {
+interface CookieContext extends GlobalContextValues {
   cookies: { darkMode?: string };
 }
 
-interface ThemeContext extends AppContextValues {
+interface ThemeContext extends GlobalContextValues {
   theme: string;
 }
 
-interface DataContext extends AppContextValues {
+interface DataContext extends GlobalContextValues {
   data: string;
 }
 
-interface UserContext extends AppContextValues {
+interface UserContext extends GlobalContextValues {
   user: { id: string; name: string };
 }
 
@@ -47,9 +47,11 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const app = (
-        <AppContextProvider initialValues={{ cookies: { darkMode: "true" } }}>
+        <GlobalContextProvider
+          initialValues={{ cookies: { darkMode: "true" } }}
+        >
           <TestComponent />
-        </AppContextProvider>
+        </GlobalContextProvider>
       );
 
       const { container, ssrHtml, cleanup } = await renderAndHydrate(app);
@@ -72,9 +74,9 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const app = (
-        <AppContextProvider initialValues={{}}>
+        <GlobalContextProvider initialValues={{}}>
           <TestComponent />
-        </AppContextProvider>
+        </GlobalContextProvider>
       );
 
       const { container, ssrHtml, cleanup } = await renderAndHydrate(app);
@@ -100,9 +102,9 @@ describe("Orbo - createGlobalState", () => {
       const ComponentNotUsingState = () => <div>No state used</div>;
 
       const { cleanup } = await renderAndHydrate(
-        <AppContextProvider initialValues={{}}>
+        <GlobalContextProvider initialValues={{}}>
           <ComponentNotUsingState />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
       cleanupFunctions.push(cleanup);
 
@@ -129,9 +131,9 @@ describe("Orbo - createGlobalState", () => {
 
       // First render without using state
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider initialValues={{}}>
+        <GlobalContextProvider initialValues={{}}>
           <LazyComponent shouldUseState={false} />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
       cleanupFunctions.push(cleanup);
 
@@ -143,9 +145,9 @@ describe("Orbo - createGlobalState", () => {
       // Re-render with state usage by creating a new render
       const { container: container2, cleanup: cleanup2 } =
         await renderAndHydrate(
-          <AppContextProvider initialValues={{}}>
+          <GlobalContextProvider initialValues={{}}>
             <LazyComponent shouldUseState={true} />
-          </AppContextProvider>,
+          </GlobalContextProvider>,
         );
       cleanupFunctions.push(cleanup2);
 
@@ -206,10 +208,10 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider initialValues={{}}>
+        <GlobalContextProvider initialValues={{}}>
           <ComponentA />
           <ComponentB />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
       cleanupFunctions.push(cleanup);
 
@@ -242,12 +244,12 @@ describe("Orbo - createGlobalState", () => {
 
       const { container } = render(
         <div>
-          <AppContextProvider initialValues={{ theme: "dark" }}>
+          <GlobalContextProvider initialValues={{ theme: "dark" }}>
             <ThemeDisplay />
-          </AppContextProvider>
-          <AppContextProvider initialValues={{ theme: "light" }}>
+          </GlobalContextProvider>
+          <GlobalContextProvider initialValues={{ theme: "light" }}>
             <ThemeDisplay />
-          </AppContextProvider>
+          </GlobalContextProvider>
         </div>,
       );
 
@@ -282,10 +284,10 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider initialValues={{}}>
+        <GlobalContextProvider initialValues={{}}>
           <ComponentA />
           <ComponentB />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
       cleanupFunctions.push(cleanup);
 
@@ -328,9 +330,9 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider initialValues={{}}>
+        <GlobalContextProvider initialValues={{}}>
           <Counter />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
       cleanupFunctions.push(cleanup);
 
@@ -390,9 +392,9 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider initialValues={{}}>
+        <GlobalContextProvider initialValues={{}}>
           <ParentComponent />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
       cleanupFunctions.push(cleanup);
 
@@ -460,9 +462,9 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider initialValues={{}}>
+        <GlobalContextProvider initialValues={{}}>
           <ParentComponent />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
       cleanupFunctions.push(cleanup);
 
@@ -524,11 +526,11 @@ describe("Orbo - createGlobalState", () => {
       // Test that error during SSR fails gracefully and we can catch it
       try {
         await renderAndHydrate(
-          <AppContextProvider initialValues={{}}>
+          <GlobalContextProvider initialValues={{}}>
             <ErrorBoundary>
               <BrokenComponent />
             </ErrorBoundary>
-          </AppContextProvider>,
+          </GlobalContextProvider>,
         );
         expect.fail("Should have thrown an error");
       } catch (error) {
@@ -558,9 +560,9 @@ describe("Orbo - createGlobalState", () => {
 
       // First render
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider initialValues={contextValues}>
+        <GlobalContextProvider initialValues={contextValues}>
           <TestComponent />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
       cleanupFunctions.push(cleanup);
 
@@ -572,9 +574,9 @@ describe("Orbo - createGlobalState", () => {
       // Second render with different context values - should initialize again
       const { container: container2, cleanup: cleanup2 } =
         await renderAndHydrate(
-          <AppContextProvider initialValues={{ data: "different" }}>
+          <GlobalContextProvider initialValues={{ data: "different" }}>
             <TestComponent />
-          </AppContextProvider>,
+          </GlobalContextProvider>,
         );
       cleanupFunctions.push(cleanup2);
 
@@ -621,10 +623,12 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider initialValues={{ user: { id: "1", name: "John" } }}>
+        <GlobalContextProvider
+          initialValues={{ user: { id: "1", name: "John" } }}
+        >
           <UserProfile />
           <UserSettings />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
       cleanupFunctions.push(cleanup);
 
@@ -656,16 +660,16 @@ describe("Orbo - createGlobalState", () => {
 
       // First context instance
       const { container: container1 } = render(
-        <AppContextProvider initialValues={{ theme: "dark" }}>
+        <GlobalContextProvider initialValues={{ theme: "dark" }}>
           <TestComponent />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
 
       // Second context instance
       const { container: container2 } = render(
-        <AppContextProvider initialValues={{ theme: "light" }}>
+        <GlobalContextProvider initialValues={{ theme: "light" }}>
           <TestComponent />
-        </AppContextProvider>,
+        </GlobalContextProvider>,
       );
 
       expect(
