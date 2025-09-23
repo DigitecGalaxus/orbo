@@ -21,11 +21,14 @@ interface GlobalStateConfig<T = unknown> {
   initialState: (globalStateInitialValues: GlobalStateInitialValues) => T;
   /**
    * Optional function to synchronize state with external sources
-   * 
+   *
    * Called when the first component mounts, and can return a cleanup function
    * that is called when the last component unmounts (if `cleanupOnUnmount` is true)
    */
-  onMount?: (setState: (newState: T) => void, initalState: T) => void | (() => void);
+  onMount?: (
+    setState: (newState: T) => void,
+    initalState: T,
+  ) => void | (() => void);
   /**
    * When true, automatically cleans up global state when no components are using it
    * anymore
@@ -129,14 +132,14 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
     if (!subContext) {
       const listeners = new Set<(newState: any) => any>();
       const updateState = (newState: T) => {
-          if (process.env.NODE_ENV === "development") {
-            if (listeners.size === 0) {
-              console.warn(
-                "[orbo] Warning: Updating global state directly in `onMount`. This is forbidden as it would cause hydration mismatches",
-              );
-            }
+        if (process.env.NODE_ENV === "development") {
+          if (listeners.size === 0) {
+            console.warn(
+              "[orbo] Warning: Updating global state directly in `onMount`. This is forbidden as it would cause hydration mismatches",
+            );
           }
-          listeners.forEach((setter) => setter(newState))
+        }
+        listeners.forEach((setter) => setter(newState));
       };
       const value = config.initialState(globalStateContext.initialValues);
       const cleanup = config.onMount?.(updateState, value);

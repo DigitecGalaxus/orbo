@@ -780,16 +780,24 @@ describe("Orbo - createGlobalState", () => {
       ).toHaveTextContent("0");
 
       fireEvent.click(container.querySelector('[data-testid="toggle-first"]')!);
-      expect(container.querySelector('[data-testid="counter-first"]')).toBeNull();
+      expect(
+        container.querySelector('[data-testid="counter-first"]'),
+      ).toBeNull();
       expect(
         container.querySelector('[data-testid="counter-second"]'),
       ).toHaveTextContent("0");
 
       expect(cleanupSpy).not.toHaveBeenCalled();
 
-      fireEvent.click(container.querySelector('[data-testid="toggle-second"]')!);
-      expect(container.querySelector('[data-testid="counter-first"]')).toBeNull();
-      expect(container.querySelector('[data-testid="counter-second"]')).toBeNull();
+      fireEvent.click(
+        container.querySelector('[data-testid="toggle-second"]')!,
+      );
+      expect(
+        container.querySelector('[data-testid="counter-first"]'),
+      ).toBeNull();
+      expect(
+        container.querySelector('[data-testid="counter-second"]'),
+      ).toBeNull();
 
       expect(cleanupSpy).toHaveBeenCalledOnce();
     });
