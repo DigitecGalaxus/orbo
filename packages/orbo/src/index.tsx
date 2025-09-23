@@ -66,10 +66,10 @@ const AppContext = createContext<AppContextData | undefined>(undefined);
  * ```
  */
 export function AppContextProvider({
-  values,
+  initialValues: values,
   children,
 }: {
-  values: AppContextValues;
+  initialValues: AppContextValues;
   children: React.ReactNode;
 }) {
   const [contextData] = useState(

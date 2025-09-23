@@ -47,7 +47,7 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const app = (
-        <AppContextProvider values={{ cookies: { darkMode: "true" } }}>
+        <AppContextProvider initialValues={{ cookies: { darkMode: "true" } }}>
           <TestComponent />
         </AppContextProvider>
       );
@@ -72,7 +72,7 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const app = (
-        <AppContextProvider values={{}}>
+        <AppContextProvider initialValues={{}}>
           <TestComponent />
         </AppContextProvider>
       );
@@ -100,7 +100,7 @@ describe("Orbo - createGlobalState", () => {
       const ComponentNotUsingState = () => <div>No state used</div>;
 
       const { cleanup } = await renderAndHydrate(
-        <AppContextProvider values={{}}>
+        <AppContextProvider initialValues={{}}>
           <ComponentNotUsingState />
         </AppContextProvider>,
       );
@@ -129,7 +129,7 @@ describe("Orbo - createGlobalState", () => {
 
       // First render without using state
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider values={{}}>
+        <AppContextProvider initialValues={{}}>
           <LazyComponent shouldUseState={false} />
         </AppContextProvider>,
       );
@@ -143,7 +143,7 @@ describe("Orbo - createGlobalState", () => {
       // Re-render with state usage by creating a new render
       const { container: container2, cleanup: cleanup2 } =
         await renderAndHydrate(
-          <AppContextProvider values={{}}>
+          <AppContextProvider initialValues={{}}>
             <LazyComponent shouldUseState={true} />
           </AppContextProvider>,
         );
@@ -206,7 +206,7 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider values={{}}>
+        <AppContextProvider initialValues={{}}>
           <ComponentA />
           <ComponentB />
         </AppContextProvider>,
@@ -242,10 +242,10 @@ describe("Orbo - createGlobalState", () => {
 
       const { container } = render(
         <div>
-          <AppContextProvider values={{ theme: "dark" }}>
+          <AppContextProvider initialValues={{ theme: "dark" }}>
             <ThemeDisplay />
           </AppContextProvider>
-          <AppContextProvider values={{ theme: "light" }}>
+          <AppContextProvider initialValues={{ theme: "light" }}>
             <ThemeDisplay />
           </AppContextProvider>
         </div>,
@@ -282,7 +282,7 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider values={{}}>
+        <AppContextProvider initialValues={{}}>
           <ComponentA />
           <ComponentB />
         </AppContextProvider>,
@@ -328,7 +328,7 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider values={{}}>
+        <AppContextProvider initialValues={{}}>
           <Counter />
         </AppContextProvider>,
       );
@@ -390,7 +390,7 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider values={{}}>
+        <AppContextProvider initialValues={{}}>
           <ParentComponent />
         </AppContextProvider>,
       );
@@ -460,7 +460,7 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider values={{}}>
+        <AppContextProvider initialValues={{}}>
           <ParentComponent />
         </AppContextProvider>,
       );
@@ -524,7 +524,7 @@ describe("Orbo - createGlobalState", () => {
       // Test that error during SSR fails gracefully and we can catch it
       try {
         await renderAndHydrate(
-          <AppContextProvider values={{}}>
+          <AppContextProvider initialValues={{}}>
             <ErrorBoundary>
               <BrokenComponent />
             </ErrorBoundary>
@@ -558,7 +558,7 @@ describe("Orbo - createGlobalState", () => {
 
       // First render
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider values={contextValues}>
+        <AppContextProvider initialValues={contextValues}>
           <TestComponent />
         </AppContextProvider>,
       );
@@ -572,7 +572,7 @@ describe("Orbo - createGlobalState", () => {
       // Second render with different context values - should initialize again
       const { container: container2, cleanup: cleanup2 } =
         await renderAndHydrate(
-          <AppContextProvider values={{ data: "different" }}>
+          <AppContextProvider initialValues={{ data: "different" }}>
             <TestComponent />
           </AppContextProvider>,
         );
@@ -621,7 +621,7 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <AppContextProvider values={{ user: { id: "1", name: "John" } }}>
+        <AppContextProvider initialValues={{ user: { id: "1", name: "John" } }}>
           <UserProfile />
           <UserSettings />
         </AppContextProvider>,
@@ -656,14 +656,14 @@ describe("Orbo - createGlobalState", () => {
 
       // First context instance
       const { container: container1 } = render(
-        <AppContextProvider values={{ theme: "dark" }}>
+        <AppContextProvider initialValues={{ theme: "dark" }}>
           <TestComponent />
         </AppContextProvider>,
       );
 
       // Second context instance
       const { container: container2 } = render(
-        <AppContextProvider values={{ theme: "light" }}>
+        <AppContextProvider initialValues={{ theme: "light" }}>
           <TestComponent />
         </AppContextProvider>,
       );
