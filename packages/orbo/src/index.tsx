@@ -7,7 +7,7 @@ import { createContext, use, useCallback, useEffect, useState } from "react";
  *
  * ```typescript
  * declare module 'orbo' {
- *   interface AppContextValues {
+ *   interface GlobalContextValues {
  *     cookies: { darkMode?: string };
  *     user: { id: string; name: string } | null;
  *   }
