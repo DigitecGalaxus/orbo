@@ -621,7 +621,9 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const { container, cleanup } = await renderAndHydrate(
-        <GlobalStateProvider initialValues={{ user: { id: "1", name: "John" } }}>
+        <GlobalStateProvider
+          initialValues={{ user: { id: "1", name: "John" } }}
+        >
           <UserProfile />
           <UserSettings />
         </GlobalStateProvider>,

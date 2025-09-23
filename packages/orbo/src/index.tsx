@@ -46,7 +46,9 @@ interface GlobalStateContextData {
   >;
 }
 
-const GlobalStateContext = createContext<GlobalStateContextData | undefined>(undefined);
+const GlobalStateContext = createContext<GlobalStateContextData | undefined>(
+  undefined,
+);
 
 /**
  * Root provider that enables global state management for child components.
@@ -80,7 +82,9 @@ export function GlobalStateProvider({
       }) satisfies GlobalStateContextData,
   );
   return (
-    <GlobalStateContext.Provider value={contextData}>{children}</GlobalStateContext.Provider>
+    <GlobalStateContext.Provider value={contextData}>
+      {children}
+    </GlobalStateContext.Provider>
   );
 }
 
