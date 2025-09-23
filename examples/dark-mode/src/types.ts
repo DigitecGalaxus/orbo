@@ -1,8 +1,8 @@
-// Example of how to extend AppContextValues for type safety in your app
+// Example of how to extend GlobalStateInitialValues for type safety in your app
 // for state initialization
 
 declare module "orbo" {
-  interface AppContextValues {
+  interface GlobalStateInitialValues {
     cookies: {
       darkMode?: string;
       theme?: "light" | "dark";

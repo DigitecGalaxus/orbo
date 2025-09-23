@@ -1,24 +1,24 @@
 import { createContext, use, useCallback, useEffect, useState } from "react";
 
 /**
- * Base interface for context values passed to `AppContextProvider`.
+ * Base interface for initial values passed to `GlobalStateProvider`.
  *
  * **Type Safety:** Extend this interface using module augmentation for compile-time safety:
  *
  * ```typescript
  * declare module 'orbo' {
- *   interface AppContextValues {
+ *   interface GlobalStateInitialValues {
  *     cookies: { darkMode?: string };
  *     user: { id: string; name: string } | null;
  *   }
  * }
  * ```
  */
-export interface AppContextValues {}
+export interface GlobalStateInitialValues {}
 
 interface GlobalStateConfig<T = unknown> {
-  /** Function that receives context values and returns the initial state */
-  initialState: (appContextValues: AppContextValues) => T;
+  /** Function that receives initial values and returns the initial state */
+  initialState: (globalStateInitialValues: GlobalStateInitialValues) => T;
   /**
    * When true, automatically cleans up global state when no components are using it
    * anymore
@@ -32,8 +32,8 @@ interface GlobalStateConfig<T = unknown> {
   cleanupOnUnmount?: boolean;
 }
 
-interface AppContextData {
-  values: AppContextValues;
+interface GlobalStateContextData {
+  initialValues: GlobalStateInitialValues;
   /** Internal state management */
   subContexts: Map<
     GlobalStateConfig,
@@ -46,41 +46,41 @@ interface AppContextData {
   >;
 }
 
-const AppContext = createContext<AppContextData | undefined>(undefined);
+const GlobalStateContext = createContext<GlobalStateContextData | undefined>(undefined);
 
 /**
  * Root provider that enables global state management for child components.
  *
- * @param values Context values passed to `initialState` functions
+ * @param initialValues Initial values passed to `initialState` functions
  * @param children React components that can use global state
  *
  * @example
  * ```tsx
  * function App({ cookies, user }) {
  *   return (
- *     <AppContextProvider values={{ cookies, user }}>
+ *     <GlobalStateProvider initialValues={{ cookies, user }}>
  *       <MyComponents />
- *     </AppContextProvider>
+ *     </GlobalStateProvider>
  *   );
  * }
  * ```
  */
-export function AppContextProvider({
-  values,
+export function GlobalStateProvider({
+  initialValues,
   children,
 }: {
-  values: AppContextValues;
+  initialValues: GlobalStateInitialValues;
   children: React.ReactNode;
 }) {
   const [contextData] = useState(
     () =>
       ({
-        values,
+        initialValues,
         subContexts: new Map(),
-      }) satisfies AppContextData,
+      }) satisfies GlobalStateContextData,
   );
   return (
-    <AppContext.Provider value={contextData}>{children}</AppContext.Provider>
+    <GlobalStateContext.Provider value={contextData}>{children}</GlobalStateContext.Provider>
   );
 }
 
@@ -107,59 +107,59 @@ export function AppContextProvider({
  * - ⚡ **Lazy initialization** - state only initializes when first component uses it
  * - 🔗 **Automatic sharing** - all components using the same state share exact object references
  * - 🔒 **SSR safe** - no hydration mismatches, works with server-side rendering
- * - 🏝️ **Context isolated** - each `AppContextProvider` maintains separate state instances
+ * - 🏝️ **Context isolated** - each `GlobalStateProvider` maintains separate state instances
  */
 export function createGlobalState<T>(config: GlobalStateConfig<T>) {
   // Create a unique key for this global state instance
   const stateKey = config;
   // Create a new subcontext
-  function initializeSubContext(appContext: AppContextData) {
-    let subContext = appContext.subContexts.get(stateKey);
+  function initializeSubContext(globalStateContext: GlobalStateContextData) {
+    let subContext = globalStateContext.subContexts.get(stateKey);
     if (!subContext) {
       const listeners = new Set<(newState: any) => any>();
       subContext = {
-        value: config.initialState(appContext.values),
+        value: config.initialState(globalStateContext.initialValues),
         listeners,
         subscribe: (setter: (prev: T) => T) => {
           listeners.add(setter);
           return () => {
             listeners.delete(setter);
             if (listeners.size === 0 && config.cleanupOnUnmount) {
-              appContext.subContexts.delete(stateKey);
+              globalStateContext.subContexts.delete(stateKey);
             }
           };
         },
         updateState: (newState: T) =>
           listeners.forEach((setter) => setter(newState)),
       };
-      appContext.subContexts.set(stateKey, subContext);
+      globalStateContext.subContexts.set(stateKey, subContext);
     }
     return subContext;
   }
   return [
     // Read from global state
     function useGlobalState(): T {
-      const appContext = use(AppContext)!;
+      const globalStateContext = use(GlobalStateContext)!;
       // Initialize state only once using the cache
       const [state, setState] = useState<T>(
-        () => initializeSubContext(appContext).value,
+        () => initializeSubContext(globalStateContext).value,
       );
       useEffect(
-        () => initializeSubContext(appContext).subscribe(setState),
-        [appContext],
+        () => initializeSubContext(globalStateContext).subscribe(setState),
+        [globalStateContext],
       );
       return state;
     },
     // Write to global state
     function useSetGlobalState(): (newState: T | ((prev: T) => T)) => void {
-      const appContext = use(AppContext)!;
+      const globalStateContext = use(GlobalStateContext)!;
       useEffect(
-        () => initializeSubContext(appContext).subscribe(() => {}),
-        [appContext],
+        () => initializeSubContext(globalStateContext).subscribe(() => {}),
+        [globalStateContext],
       );
       return useCallback(
         (newState: T | ((prev: T) => T)) => {
-          const subContext = initializeSubContext(appContext);
+          const subContext = initializeSubContext(globalStateContext);
           const nextState =
             typeof newState === "function"
               ? (newState as (prev: T) => T)(subContext.value)
@@ -167,7 +167,7 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
           subContext.value = nextState;
           subContext.updateState(nextState);
         },
-        [appContext],
+        [globalStateContext],
       );
     },
   ] as const;
@@ -175,44 +175,44 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
 
 const globalStateMemoCache = new WeakMap<
   Function,
-  WeakMap<AppContextValues, unknown>
+  WeakMap<GlobalStateInitialValues, unknown>
 >();
 /**
- * Memoizes expensive computations based on context values using WeakMap caching
+ * Memoizes expensive computations based on initial values using WeakMap caching
  *
  * This allows sharing functionality for multiple initializations
  *
- * @param factory Function that computes a value from context values
- * @returns Memoized function that caches results per context object reference
+ * @param factory Function that computes a value from initial values
+ * @returns Memoized function that caches results per initial values object reference
  *
  * @example
  * ```tsx
- * const computeUserPrefs = globalStateMemo((context: { user: User }) =>
- *   processExpensiveUserData(context.user)
+ * const computeUserPrefs = globalStateMemo((initialValues: { user: User }) =>
+ *   processExpensiveUserData(initialValues.user)
  * );
  *
  * const [useUserPrefs] = createGlobalState({
- *   initialState(context): computeUserPrefs(context)
+ *   initialState(initialValues): computeUserPrefs(initialValues)
  * });
  * ```
  *
  * **Benefits:**
- * - 🚀 **Performance** - caches expensive computations per context object
- * - 🧹 **Memory safe** - WeakMap allows garbage collection of unused contexts
+ * - 🚀 **Performance** - caches expensive computations per initial values object
+ * - 🧹 **Memory safe** - WeakMap allows garbage collection of unused initial values
  * - 🔄 **Cache sharing** - same factory function shares cache across multiple uses
  */
 export const globalStateMemo = <T,>(
-  factory: (values: AppContextValues) => T,
-): ((values: AppContextValues) => T) => {
+  factory: (initialValues: GlobalStateInitialValues) => T,
+): ((initialValues: GlobalStateInitialValues) => T) => {
   let contextCaches = globalStateMemoCache.get(factory);
   if (!contextCaches) {
     contextCaches = new WeakMap();
     globalStateMemoCache.set(factory, contextCaches);
   }
-  return (values: AppContextValues): T => {
-    if (!contextCaches.has(values)) {
-      contextCaches.set(values, factory(values));
+  return (initialValues: GlobalStateInitialValues): T => {
+    if (!contextCaches.has(initialValues)) {
+      contextCaches.set(initialValues, factory(initialValues));
     }
-    return contextCaches.get(values) as T;
+    return contextCaches.get(initialValues) as T;
   };
 };
