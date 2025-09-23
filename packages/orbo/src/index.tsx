@@ -17,7 +17,7 @@ import { createContext, use, useCallback, useEffect, useState } from "react";
 export interface GlobalStateInitialValues {}
 
 interface GlobalStateConfig<T = unknown> {
-  /** Function that receives initial values and returns the initial state */
+  /** Function that receives the initial values from `GlobalStateProvider` and returns the initial state */
   initialState: (globalStateInitialValues: GlobalStateInitialValues) => T;
   /**
    * When true, automatically cleans up global state when no components are using it
