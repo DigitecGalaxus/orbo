@@ -31,7 +31,7 @@ Built from the ground up for modern React applications that demand both performa
 
 ## Features
 
-- 🚫 **Zero nested providers** - Single `AppContextProvider` replaces all provider nesting
+- 🚫 **Zero nested providers** - Single `GlobalStateProvider` replaces all provider nesting
 - 📦 **True bundle splitting** - State code loads only when components that use it render
 - ⚡ **useState-familiar API** - `const count = useCount()` and `setCount(5)` - that's it
 - 🔒 **SSR safe** - No hydration mismatches, no useEffect hacks
@@ -47,7 +47,7 @@ npm install orbo
 ## Quick Start
 
 ```tsx
-import { createGlobalState, AppContextProvider } from "orbo";
+import { createGlobalState, GlobalStateProvider } from "orbo";
 
 // State definition stays with your component - not in _app.tsx
 const [useCount, useSetCount] = createGlobalState({
@@ -63,9 +63,9 @@ function Counter() {
 
 function App() {
   return (
-    <AppContextProvider values={{}}>
+    <GlobalStateProvider initialValues={{}}>
       <Counter />
-    </AppContextProvider>
+    </GlobalStateProvider>
   );
 }
 ```
@@ -101,9 +101,9 @@ export function DarkModeToggle() {
 // _app.tsx - clean and minimal
 function App({ pageProps, cookies }) {
   return (
-    <AppContextProvider values={{ cookies }}>
+    <GlobalStateProvider initialValues={{ cookies }}>
       <Component {...pageProps} />
-    </AppContextProvider>
+    </GlobalStateProvider>
   );
 }
 ```
@@ -119,7 +119,7 @@ Orbo provides compile-time safety through module augmentation (same pattern as s
 // Import to enable module augmentation
 import 'orbo';
 declare module "orbo" {
-  interface AppContextValues {
+  interface GlobalStateInitialValues {
     cookies: { darkMode?: string };
     user: { id: string; name: string } | null;
     hostname: string;
@@ -128,10 +128,10 @@ declare module "orbo" {
 
 // Now your initialState functions are fully typed
 const [useUser] = createGlobalState({
-  initialState: (context) => {
-    // context.user <- TypeScript knows this exists and its shape
-    // context.invalidProp <- TypeScript error!
-    return context.user;
+  initialState: (initialValues) => {
+    // initialValues.user <- TypeScript knows this exists and its shape
+    // initialValues.invalidProp <- TypeScript error!
+    return initialValues.user;
   },
 });
 ```
@@ -158,29 +158,29 @@ Creates a pair of hooks for reading and writing global state.
 
 ```tsx
 const [useValue, useSetValue] = createGlobalState({
-  initialState: (appContext) => computeInitialValue(appContext),
+  initialState: (initialValues) => computeInitialValue(initialValues),
 });
 ```
 
 **Parameters:**
 
-- `config.initialState`: Function that receives app context values and returns the initial state
+- `config.initialState`: Function that receives initial values and returns the initial state
 
 **Returns:**
 
 - `[useGlobalState, useSetGlobalState]` - React hooks for reading and writing the state
 
-### `AppContextProvider`
+### `GlobalStateProvider`
 
-Root provider that manages state isolation and provides context values
+Root provider that manages state isolation and provides initial values
 
 ```tsx
-<AppContextProvider values={{ cookies, user }}>{children}</AppContextProvider>
+<GlobalStateProvider initialValues={{ cookies, user }}>{children}</GlobalStateProvider>
 ```
 
 **Props:**
 
-- `values`: Object containing context values passed to `initialState` functions
+- `initialValues`: Object containing initial values passed to `initialState` functions
 - `children`: React children
 
 ## Examples
