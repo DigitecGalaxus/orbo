@@ -250,6 +250,7 @@ Root provider that manages state isolation and provides initial values
 
 Check out the `/examples` directory for complete implementations:
 
+- **[Live demo](https://digitecgalaxus.github.io/orbo/)** of Orbo's core functionality
 - **Dark Mode** - Theme switching with cookie persistence
 - **User State** - Authentication state management
 - **Feature Flags** - A/B testing and feature toggling
