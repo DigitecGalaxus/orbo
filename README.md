@@ -99,7 +99,8 @@ const [useDarkMode, useSetDarkMode] = createGlobalState({
       };
     }
   },
-  cleanupOnUnmount: true, // Enable cleanup when no components use this state
+  // Enable automatic cleanup once all all components using this state unmount
+  cleanupOnUnmount: true,
 });
 
 export { useDarkMode, useSetDarkMode };
@@ -176,13 +177,16 @@ Creates a pair of hooks for reading and writing global state.
 ```tsx
 const [useValue, useSetValue] = createGlobalState({
   initialState: (initialValues) => computeInitialValue(initialValues),
+
+  // Optional: sync with external sources
   onMount: (setState, initialState) => {
-    // Optional: sync with external sources
+    // Optional: cleanup function
     return () => {
-      // Optional: cleanup function
     };
   },
-  cleanupOnUnmount: true, // Optional: cleanup when no components use this state
+
+  // Optional: cleanup when no components use this state
+  cleanupOnUnmount: true, 
 });
 ```
 
