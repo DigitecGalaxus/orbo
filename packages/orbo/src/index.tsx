@@ -20,11 +20,12 @@ interface GlobalStateConfig<T = unknown> {
   /** Function that receives the initial values from `GlobalStateProvider` and returns the initial state */
   initialState: (globalStateInitialValues: GlobalStateInitialValues) => T;
   /**
-   * Optional function to synchronize state with external sources
+   * Optional client side exclusive function to synchronize state with external sources
    *
    * Called when the first component subscribes (mounts), and can return a cleanup function
    * that is called when the last component unsubscribes (unmounts)
    *
+   * that is called when the last component unsubscribes (unmounts)
    * Note: This function is NOT called during server-side rendering
    */
   onSubscribe?: (
