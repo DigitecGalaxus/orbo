@@ -2,4 +2,4 @@
 "orbo": minor
 ---
 
-add optional sync feature to watch external sources
+add optional onSubscribe sync feature to watch external sources

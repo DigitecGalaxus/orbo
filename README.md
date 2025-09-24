@@ -4,7 +4,6 @@
 
 ![Orbo](https://raw.githubusercontent.com/DigitecGalaxus/orbo/refs/heads/main/logo.jpg)
 
-
 Minimal, lazy-initialized global state for React. Zero nested providers, true bundle splitting, useState-familiar API
 
 ## Why Orbo?
@@ -72,7 +71,9 @@ function App() {
 
 That's it. No provider nesting, no complex setup, no `_app.tsx` modifications.
 
-## Real-World Example
+## Real-World Examples
+
+### Simple Dark Mode
 
 Here's how you'd handle a typical dark mode implementation:
 
@@ -82,25 +83,6 @@ import { createGlobalState } from "orbo";
 
 const [useDarkMode, useSetDarkMode] = createGlobalState({
   initialState: ({ cookies }) => cookies.darkMode === "true",
-  onMount: (setState, initialState) => {
-    // Watch for system dark mode preference changes
-    if (typeof window !== "undefined") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-      const handleChange = (e: MediaQueryListEvent) => {
-        setState(e.matches);
-      };
-
-      mediaQuery.addEventListener("change", handleChange);
-
-      // Return cleanup function
-      return () => {
-        mediaQuery.removeEventListener("change", handleChange);
-      };
-    }
-  },
-  // Enable automatic cleanup once all all components using this state unmount
-  cleanupOnUnmount: true,
 });
 
 export { useDarkMode, useSetDarkMode };
@@ -127,7 +109,53 @@ function App({ pageProps, cookies }) {
 }
 ```
 
-In this example the dark mode logic is completely decoupled from your app shell. Components that don't use dark mode never load its code. New developers can understand and modify the feature without touching `_app.tsx`
+### Server Time with Auto-Update
+
+Here's a more complex example showing lifecycle management with `onSubscribe` and `persistState`:
+
+```tsx
+// useServerTime.ts
+import { createGlobalState } from "orbo";
+
+const [useServerTime, useSetServerTime] = createGlobalState({
+  initialState: ({ serverTime }) => new Date(serverTime),
+  onSubscribe: (setState) => {
+    // Start timer when first component subscribes
+    const interval = setInterval(() => {
+      setState(new Date());
+    }, 1000);
+
+    // Return cleanup function
+    return () => {
+      clearInterval(interval);
+    };
+  },
+  // Cleanup timer when no components are using this state
+  persistState: false,
+});
+
+export { useServerTime };
+
+// Clock.tsx
+import { useServerTime } from "./useServerTime";
+
+export function Clock() {
+  const time = useServerTime();
+
+  return <div>Current time: {time.toLocaleTimeString()}</div>;
+}
+
+// _app.tsx
+function App({ pageProps }) {
+  return (
+    <GlobalStateProvider initialValues={{ serverTime: Date.now() }}>
+      <Component {...pageProps} />
+    </GlobalStateProvider>
+  );
+}
+```
+
+In these examples, the logic is completely decoupled from your app shell. Components that don't use the state never load its code. New developers can understand and modify features without touching `_app.tsx`
 
 ## TypeScript Support
 
@@ -135,7 +163,8 @@ Orbo provides compile-time safety through module augmentation (same pattern as s
 
 ```typescript
 // types.ts
-import 'orbo';
+// Import to enable module augmentation
+import "orbo";
 declare module "orbo" {
   interface GlobalStateInitialValues {
     cookies: { darkMode?: string };
@@ -178,23 +207,25 @@ Creates a pair of hooks for reading and writing global state.
 const [useValue, useSetValue] = createGlobalState({
   initialState: (initialValues) => computeInitialValue(initialValues),
 
-  // Optional: sync with external sources
-  onMount: (setState, initialState) => {
-    // Optional: cleanup function
+  // Optional: sync with external sources (client-side only)
+  onSubscribe: (setState, currentState) => {
+    // Subscribe to external changes
+    // Optional: return cleanup function
     return () => {
+      // Cleanup when last component unsubscribes
     };
   },
 
-  // Optional: cleanup when no components use this state
-  cleanupOnUnmount: true, 
+  // Optional: keep state in memory when components unmount
+  persistState: true, // (default)
 });
 ```
 
 **Parameters:**
 
 - `config.initialState`: Function that receives initial values and returns the initial state
-- `config.onMount` *(optional)*: Function called when first component mounts. Receives `setState` and `initialState`. Can return a cleanup function
-- `config.cleanupOnUnmount` *(optional)*: When `true`, cleans up state and calls onMount cleanup when no components are using it (default: `false`)
+- `config.onSubscribe` _(optional)_: Function called when first component subscribes (client-side only). Receives `setState` and `currentState`. Can return a cleanup function which runs when the last component unsubscribes
+- `config.persistState` _(optional)_: When `true`, keeps state in memory after components unmount (default: `true`)
 
 **Returns:**
 
@@ -205,7 +236,9 @@ const [useValue, useSetValue] = createGlobalState({
 Root provider that manages state isolation and provides initial values
 
 ```tsx
-<GlobalStateProvider initialValues={{ cookies, user }}>{children}</GlobalStateProvider>
+<GlobalStateProvider initialValues={{ cookies, user }}>
+  {children}
+</GlobalStateProvider>
 ```
 
 **Props:**
