@@ -1,14 +1,11 @@
 {
-  "name": "example-dark-mode",
+  "name": "orbo-example-base",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "typecheck": "tsc --noEmit",
-    "preview": "vite preview",
-    "prettier": "prettier --write \"./src/**/*.{ts,tsx,js,jsx}\""
+    "build": "tsc && vite build"
   },
   "dependencies": {
     "orbo": "workspace:*",
@@ -19,7 +16,6 @@
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
-    "prettier": "^3.6.2",
     "typescript": "^5.9.2",
     "vite": "^7.1.5"
   }

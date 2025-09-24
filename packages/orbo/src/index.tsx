@@ -20,30 +20,44 @@ interface GlobalStateConfig<T = unknown> {
   /** Function that receives the initial values from `GlobalStateProvider` and returns the initial state */
   initialState: (globalStateInitialValues: GlobalStateInitialValues) => T;
   /**
-   * When true, automatically cleans up global state when no components are using it
-   * anymore
+   * Optional client side exclusive function to synchronize state with external sources
    *
-   * - **false (default)**: State persists across component mount/unmount cycles
-   * - **true**: State is reset to initial value when all consuming components unmount
+   * Called when the first component subscribes (mounts), and can return a cleanup function
+   * that is called when the last component unsubscribes (unmounts)
    *
-   * Use cleanup when you want fresh state for each component lifecycle,
+   * that is called when the last component unsubscribes (unmounts)
+   * Note: This function is NOT called during server-side rendering
+   */
+  onSubscribe?: (
+    setState: (newState: T | ((prev: T) => T)) => void,
+    currentState: T,
+  ) => void | (() => void);
+  /**
+   * When true, keeps the state value in memory even after all components unmount
+   *
+   * - **true (default)**: State persists across component mount/unmount cycles
+   * - **false**: State is reset to initial value when all consuming components unmount
+   *
+   * Use persistState: false when you want fresh state for each component lifecycle,
    * or to prevent memory leaks with large state objects.
    */
-  cleanupOnUnmount?: boolean;
+  persistState?: boolean;
 }
 
 interface GlobalStateContextData {
   initialValues: GlobalStateInitialValues;
   /** Internal state management */
-  subContexts: Map<
-    GlobalStateConfig,
-    {
-      value: any;
-      listeners: Set<(newState: any) => any>;
-      subscribe: (setter: (prev: any) => any) => () => void;
-      updateState: (newState: any) => void;
-    }
-  >;
+  subContexts: Map<GlobalStateConfig<any>, SubContext<any>>;
+}
+
+// Internal statement API of Orbo
+interface SubContext<T> {
+  value: T;
+  initialized: boolean;
+  listeners: Set<(newState: T) => void>;
+  subscribe: (setter: (prev: T) => void) => () => void;
+  updateState: (newState: T | ((prev: T) => T)) => void;
+  cleanup: void | undefined | (() => void);
 }
 
 const GlobalStateContext = createContext<GlobalStateContextData | undefined>(
@@ -91,13 +105,13 @@ export function GlobalStateProvider({
 /**
  * Creates a pair of hooks for managing global state that is shared across components.
  *
- * @param config Configuration object with `initialState` function and optional `cleanupOnUnmount`
+ * @param config Configuration object with `initialState` function and optional `onSubscribe` and `persistState`
  * @returns A tuple `[useValue, useSetValue]` - hooks for reading and updating the global state
  *
  * @example
  * ```tsx
  * const [useCount, useSetCount] = createGlobalState({
- *   initialState: () => 0
+ *   initialState: () => 0,
  * });
  *
  * function Counter() {
@@ -110,33 +124,66 @@ export function GlobalStateProvider({
  * **Key Features:**
  * - ⚡ **Lazy initialization** - state only initializes when first component uses it
  * - 🔗 **Automatic sharing** - all components using the same state share exact object references
- * - 🔒 **SSR safe** - no hydration mismatches, works with server-side rendering
+ * - 🔒 **SSR safe** - no hydration mismatches, `onSubscribe` only runs client-side
  * - 🏝️ **Context isolated** - each `GlobalStateProvider` maintains separate state instances
+ * - 🎯 **Clear separation** - `persistState` for memory, `onSubscribe` for external resources
  */
 export function createGlobalState<T>(config: GlobalStateConfig<T>) {
   // Create a unique key for this global state instance
   const stateKey = config;
+  // Only call onSubscribe on client-side (not during SSR)
+  const onSubscribe =
+    (typeof window !== "undefined" && config.onSubscribe) || (() => {});
   // Create a new subcontext
-  function initializeSubContext(globalStateContext: GlobalStateContextData) {
+  function initializeSubContext(
+    globalStateContext: GlobalStateContextData,
+  ): SubContext<T> {
     let subContext = globalStateContext.subContexts.get(stateKey);
     if (!subContext) {
+      let value = config.initialState(globalStateContext.initialValues);
+      // Update state has the same shape like React's setState
+      // an can be alled in onSubscribe or by the global state setter hook
+      const updateState = (newState: T | ((prev: T) => T)) => {
+        value =
+          typeof newState === "function"
+            ? (newState as (prev: T) => T)(value)
+            : newState;
+        listeners.forEach((setter) => setter(value));
+      };
       const listeners = new Set<(newState: any) => any>();
-      subContext = {
-        value: config.initialState(globalStateContext.initialValues),
+      const newSubContext: SubContext<T> = {
+        initialized: true,
+        value,
         listeners,
-        subscribe: (setter: (prev: T) => T) => {
+        updateState,
+        cleanup: onSubscribe(updateState, value),
+        subscribe: (setter: (newState: any) => void) => {
           listeners.add(setter);
           return () => {
             listeners.delete(setter);
-            if (listeners.size === 0 && config.cleanupOnUnmount) {
-              globalStateContext.subContexts.delete(stateKey);
+            if (listeners.size === 0) {
+              // Ensure re-initialization on next subscribe
+              newSubContext.initialized = false;
+              if (config.persistState === false) {
+                globalStateContext.subContexts.delete(stateKey);
+              }
+              // Always call cleanup when last subscriber unmounts
+              newSubContext.cleanup?.();
             }
           };
         },
-        updateState: (newState: T) =>
-          listeners.forEach((setter) => setter(newState)),
       };
-      globalStateContext.subContexts.set(stateKey, subContext);
+      globalStateContext.subContexts.set(
+        stateKey,
+        newSubContext as SubContext<any>,
+      );
+      return newSubContext;
+    } else if (!subContext.initialized) {
+      subContext.cleanup = onSubscribe(
+        subContext.updateState,
+        subContext.value,
+      );
+      subContext.initialized = true;
     }
     return subContext;
   }
@@ -144,10 +191,11 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
     // Read from global state
     function useGlobalState(): T {
       const globalStateContext = use(GlobalStateContext)!;
-      // Initialize state only once using the cache
+      // Initialize state only once
       const [state, setState] = useState<T>(
         () => initializeSubContext(globalStateContext).value,
       );
+      // Rerender if the global state changes
       useEffect(
         () => initializeSubContext(globalStateContext).subscribe(setState),
         [globalStateContext],
@@ -157,19 +205,17 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
     // Write to global state
     function useSetGlobalState(): (newState: T | ((prev: T) => T)) => void {
       const globalStateContext = use(GlobalStateContext)!;
+      // This effect prevents a cleanup as long as at least one setter is mounted
       useEffect(
-        () => initializeSubContext(globalStateContext).subscribe(() => {}),
+        () =>
+          initializeSubContext(globalStateContext).subscribe(() => {
+            /* no rerender for the setter */
+          }),
         [globalStateContext],
       );
       return useCallback(
         (newState: T | ((prev: T) => T)) => {
-          const subContext = initializeSubContext(globalStateContext);
-          const nextState =
-            typeof newState === "function"
-              ? (newState as (prev: T) => T)(subContext.value)
-              : newState;
-          subContext.value = nextState;
-          subContext.updateState(nextState);
+          initializeSubContext(globalStateContext).updateState(newState);
         },
         [globalStateContext],
       );

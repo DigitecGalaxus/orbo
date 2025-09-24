@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["example-dark-mode"]
+  "ignore": ["orbo-example-base"]
 }
