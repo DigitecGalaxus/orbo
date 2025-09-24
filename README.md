@@ -74,7 +74,7 @@ That's it. No provider nesting, no complex setup, no `_app.tsx` modifications.
 
 ## Real-World Example
 
-Here's how you'd handle a typical dark mode implementation with localStorage synchronization:
+Here's how you'd handle a typical dark mode implementation:
 
 ```tsx
 // useDarkMode.ts - lives with your component, not in _app.tsx
