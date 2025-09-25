@@ -140,29 +140,23 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
   ): SubContext<T> {
     let subContext = globalStateContext.subContexts.get(stateKey);
     if (!subContext) {
+      let value = config.initialState(globalStateContext.initialValues);
+      // Update state has the same shape like React's setState
+      // an can be alled in onSubscribe or by the global state setter hook
+      const updateState = (newState: T | ((prev: T) => T)) => {
+        value =
+          typeof newState === "function"
+            ? (newState as (prev: T) => T)(value)
+            : newState;
+        listeners.forEach((setter) => setter(value));
+      };
       const listeners = new Set<(newState: any) => any>();
       const newSubContext: SubContext<T> = {
         initialized: true,
-        value: config.initialState(globalStateContext.initialValues),
+        value,
         listeners,
-        updateState:
-          // Update state has the same shape like React's setState
-          // an can be alled in onSubscribe or by the global state setter hook
-          (newState: T | ((prev: T) => T)) => {
-            newSubContext.value =
-              typeof newState === "function"
-                ? (newState as (prev: T) => T)(newSubContext.value)
-                : newState;
-            listeners.forEach((setter) => setter(newSubContext.value));
-
-            // Update the stored value of the corresponding subContext
-            // This is important for newly mounted components using existing and initialized subContexts
-            const oldSubContext = globalStateContext?.subContexts.get(stateKey);
-            if (oldSubContext) {
-              oldSubContext.value = newSubContext.value;
-            }
-          },
-        cleanup: undefined,
+        updateState,
+        cleanup: onSubscribe(updateState, value),
         subscribe: (setter: (newState: any) => void) => {
           listeners.add(setter);
           return () => {
@@ -179,10 +173,6 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
           };
         },
       };
-      newSubContext.cleanup = onSubscribe(
-        newSubContext.updateState,
-        newSubContext.value,
-      );
       globalStateContext.subContexts.set(
         stateKey,
         newSubContext as SubContext<any>,

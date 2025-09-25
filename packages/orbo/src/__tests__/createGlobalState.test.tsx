@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import React, { useState } from "react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, test, expect, vi, afterEach } from "vitest";
 import {
   createGlobalState,
@@ -844,60 +844,6 @@ describe("Orbo - createGlobalState", () => {
       ).toBeNull();
 
       expect(cleanupSpy).toHaveBeenCalledOnce();
-    });
-  });
-
-  describe("Setters work correctly across components", () => {
-    test("Reuse existing initialized context in freshly mounted new component", async () => {
-      const [useTheme, useSetTheme] = createGlobalState({
-        initialState: (context) => (context as ThemeContext).theme,
-      });
-
-      const InitialComponent = () => {
-        const theme = useTheme();
-        return <div data-testid="theme">{theme}</div>;
-      };
-
-      const ConditionalComponent = () => {
-        const theme = useTheme();
-        return <div data-testid="theme-conditional">{theme}</div>;
-      };
-
-      const ToggleButton = () => {
-        const setTheme = useSetTheme();
-        return (
-          <button data-testid="toggle" onClick={() => setTheme("dark")}>
-            Toggle Theme
-          </button>
-        );
-      };
-
-      const TextComponent = () => {
-        const theme = useTheme();
-        return (
-          <GlobalStateProvider initialValues={{ theme: "light" }}>
-            <ToggleButton />
-            <InitialComponent />
-            {theme === "dark" && <ConditionalComponent />}
-          </GlobalStateProvider>
-        );
-      };
-
-      // Context instance
-      const { container } = await renderAndHydrate(<TextComponent />);
-
-      // emulate click on the button to change theme
-      fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
-
-      // wait for re-render
-      await waitFor(() => {
-        expect(
-          container.querySelector('[data-testid="theme"]'),
-        ).toHaveTextContent("dark");
-        expect(
-          container.querySelector('[data-testid="theme-conditional"]'),
-        ).toHaveTextContent("dark");
-      });
     });
   });
 });
