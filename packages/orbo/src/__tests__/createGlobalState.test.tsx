@@ -584,7 +584,9 @@ describe("Orbo - createGlobalState", () => {
       ).toHaveTextContent("light");
 
       act(() => {
-        fireEvent.click(container.querySelector('[data-testid="toggle-theme"]')!);
+        fireEvent.click(
+          container.querySelector('[data-testid="toggle-theme"]')!,
+        );
       });
 
       expect(
