@@ -1,5 +1,15 @@
 # orbo
 
+## 3.0.0
+
+### Major Changes
+
+- 7988940: API change: rename cleanupOnUnmount to persistState
+
+### Minor Changes
+
+- 7988940: add optional onSubscribe sync feature to watch external sources
+
 ## 2.0.0
 
 ### Major Changes
