@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import React, { useState } from "react";
+import { fireEvent, render, waitFor, act } from "@testing-library/react";
 import { describe, test, expect, vi, afterEach } from "vitest";
 import {
   createGlobalState,
@@ -214,7 +214,9 @@ describe("Orbo - createGlobalState", () => {
       cleanupFunctions.push(cleanup);
 
       // Test state sharing
-      fireEvent.click(container.querySelector('[data-testid="button-a"]')!);
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="button-a"]')!);
+      });
       expect(
         container.querySelector('[data-testid="count-b"]'),
       ).toHaveTextContent("B: 1");
@@ -296,7 +298,9 @@ describe("Orbo - createGlobalState", () => {
         container.querySelector('[data-testid="state-b"]'),
       ).toHaveTextContent("B");
 
-      fireEvent.click(container.querySelector('[data-testid="button-a"]')!);
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="button-a"]')!);
+      });
 
       expect(
         container.querySelector('[data-testid="button-a"]'),
@@ -339,10 +343,14 @@ describe("Orbo - createGlobalState", () => {
 
       expect(countDisplay).toHaveTextContent("0");
 
-      fireEvent.click(button);
+      act(() => {
+        fireEvent.click(button);
+      });
       expect(countDisplay).toHaveTextContent("1");
 
-      fireEvent.click(button);
+      act(() => {
+        fireEvent.click(button);
+      });
       expect(countDisplay).toHaveTextContent("2");
     });
   });
@@ -402,17 +410,23 @@ describe("Orbo - createGlobalState", () => {
       ).toHaveTextContent("0");
 
       // First interaction: increment counter (0 → 1)
-      fireEvent.click(container.querySelector('[data-testid="increment"]')!);
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="increment"]')!);
+      });
       expect(
         container.querySelector('[data-testid="counter"]'),
       ).toHaveTextContent("1");
 
       // Second interaction: unmount second component
-      fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      });
       expect(container.querySelector('[data-testid="counter"]')).toBeNull();
 
       // Third interaction: remount second component
-      fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      });
 
       // Verification: state should be reset to 0 (initialization called 2 times:
       // 1. SSR render, 2. Client hydration - state is cleaned up so no third call needed)
@@ -569,7 +583,9 @@ describe("Orbo - createGlobalState", () => {
         container.querySelector('[data-testid="theme"]'),
       ).toHaveTextContent("light");
 
-      fireEvent.click(container.querySelector('[data-testid="toggle-theme"]')!);
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="toggle-theme"]')!);
+      });
 
       expect(
         container.querySelector('[data-testid="theme"]'),
@@ -660,11 +676,15 @@ describe("Orbo - createGlobalState", () => {
 
       // Toggle component off
       const toggleButton = container.querySelector('[data-testid="toggle"]')!;
-      fireEvent.click(toggleButton);
+      act(() => {
+        fireEvent.click(toggleButton);
+      });
       expect(container.querySelector('[data-testid="counter"]')).toBe(null);
 
       // Toggle component back on - onSubscribe should be called again since state persisted
-      fireEvent.click(toggleButton);
+      act(() => {
+        fireEvent.click(toggleButton);
+      });
       expect(
         container.querySelector('[data-testid="counter"]'),
       ).toHaveTextContent("0");
@@ -715,11 +735,15 @@ describe("Orbo - createGlobalState", () => {
       ).toHaveTextContent("42");
 
       // Unmount - cleanup should be called since no components are subscribed
-      fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      });
       expect(cleanupSpy).toHaveBeenCalledTimes(1);
 
       // Remount - onSubscribe should be called again, state should persist
-      fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      });
       expect(subscribeSpy).toHaveBeenCalledTimes(2); // Called again
       expect(
         container.querySelector('[data-testid="counter"]'),
@@ -873,13 +897,21 @@ describe("Orbo - createGlobalState", () => {
       };
 
       const TextComponent = () => {
-        const theme = useTheme();
         return (
           <GlobalStateProvider initialValues={{ theme: "light" }}>
+            <ParentComponent />
+          </GlobalStateProvider>
+        );
+      };
+
+      const ParentComponent = () => {
+        const theme = useTheme();
+        return (
+          <>
             <ToggleButton />
             <InitialComponent />
             {theme === "dark" && <ConditionalComponent />}
-          </GlobalStateProvider>
+          </>
         );
       };
 
@@ -887,7 +919,9 @@ describe("Orbo - createGlobalState", () => {
       const { container } = await renderAndHydrate(<TextComponent />);
 
       // emulate click on the button to change theme
-      fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      });
 
       // wait for re-render
       await waitFor(() => {
