@@ -30,7 +30,7 @@ interface GlobalStateConfig<T = unknown> {
    */
   onSubscribe?: (
     setState: (newState: T | ((prev: T) => T)) => void,
-    currentState: T,
+    initialState: T,
   ) => void | (() => void);
   /**
    * When true, keeps the state value in memory even after all components unmount
