@@ -1,5 +1,11 @@
 # orbo
 
+## 3.0.2
+
+### Patch Changes
+
+- 7a8244f: Fix issue with reading from context
+
 ## 3.0.1
 
 ### Patch Changes
