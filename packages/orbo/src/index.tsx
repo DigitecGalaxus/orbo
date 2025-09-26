@@ -147,7 +147,7 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
         listeners,
         updateState:
           // Update state has the same shape like React's setState
-          // an can be alled in onSubscribe or by the global state setter hook
+          // an can be called in onSubscribe or by the global state setter hook
           (newState: T | ((prev: T) => T)) => {
             newSubContext.value =
               typeof newState === "function"
