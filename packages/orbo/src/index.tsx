@@ -145,14 +145,23 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
     let subContext = globalStateContext.subContexts.get(stateKey);
     if (!subContext) {
       let value = config.initialState(globalStateContext.initialValues);
+      let updatedInitialValue = value;
       // Update state has the same shape like React's setState
       // an can be alled in onSubscribe or by the global state setter hook
       const updateState = (newState: T | ((prev: T) => T)) => {
         const existingSubContext =
           globalStateContext?.subContexts.get(stateKey);
+
         if (!existingSubContext) {
+          // If the updateState is called inside onSubscribe before any component has mounted
+          // we need to update the initial value for the next component that mounts
+          updatedInitialValue =
+            typeof newState === "function"
+              ? (newState as (prev: T) => T)(updatedInitialValue)
+              : newState;
           return;
         }
+
         const updatedValue =
           typeof newState === "function"
             ? (newState as (prev: T) => T)(existingSubContext.value)
@@ -186,6 +195,10 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
           };
         },
       };
+
+      // Update the initial value in case it was changed in onSubscribe before any component mounted
+      newSubContext.value = updatedInitialValue;
+
       globalStateContext.subContexts.set(
         stateKey,
         newSubContext as SubContext<any>,
