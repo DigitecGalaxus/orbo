@@ -1,5 +1,12 @@
 # orbo
 
+## 3.0.1
+
+### Patch Changes
+
+- 0c68b1b: Refactor onSubscribe API, explicit variable name `initialState`
+- d1488e2: Fixed issue when listener unmounts + remounts when value has changed
+
 ## 3.0.0
 
 ### Major Changes
