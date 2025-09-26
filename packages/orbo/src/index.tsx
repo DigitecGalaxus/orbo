@@ -1,4 +1,11 @@
-import { createContext, use, useCallback, useEffect, useState } from "react";
+import {
+  createContext,
+  use,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 /**
  * Base interface for initial values passed to `GlobalStateProvider`.
@@ -88,15 +95,12 @@ export function GlobalStateProvider({
   initialValues: GlobalStateInitialValues;
   children: React.ReactNode;
 }) {
-  const [contextData] = useState(
-    () =>
-      ({
-        initialValues,
-        subContexts: new Map(),
-      }) satisfies GlobalStateContextData,
-  );
+  const contextData = useRef<GlobalStateContextData>({
+    initialValues,
+    subContexts: new Map(),
+  });
   return (
-    <GlobalStateContext.Provider value={contextData}>
+    <GlobalStateContext.Provider value={contextData.current}>
       {children}
     </GlobalStateContext.Provider>
   );
@@ -140,22 +144,32 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
   ): SubContext<T> {
     let subContext = globalStateContext.subContexts.get(stateKey);
     if (!subContext) {
+      let value = config.initialState(globalStateContext.initialValues);
+      // Update state has the same shape like React's setState
+      // an can be alled in onSubscribe or by the global state setter hook
+      const updateState = (newState: T | ((prev: T) => T)) => {
+        const existingSubContext =
+          globalStateContext?.subContexts.get(stateKey);
+        if (!existingSubContext) {
+          return;
+        }
+        const updatedValue =
+          typeof newState === "function"
+            ? (newState as (prev: T) => T)(existingSubContext.value)
+            : newState;
+        listeners.forEach((setter) => setter(updatedValue));
+
+        // Update the stored value of the corresponding subContext
+        // This is important for newly mounted components using existing and initialized subContexts
+        existingSubContext.value = updatedValue;
+      };
       const listeners = new Set<(newState: any) => any>();
       const newSubContext: SubContext<T> = {
         initialized: true,
-        value: config.initialState(globalStateContext.initialValues),
+        value,
         listeners,
-        updateState:
-          // Update state has the same shape like React's setState
-          // an can be called in onSubscribe or by the global state setter hook
-          (newState: T | ((prev: T) => T)) => {
-            newSubContext.value =
-              typeof newState === "function"
-                ? (newState as (prev: T) => T)(newSubContext.value)
-                : newState;
-            listeners.forEach((setter) => setter(newSubContext.value));
-          },
-        cleanup: undefined,
+        updateState,
+        cleanup: onSubscribe(updateState, value),
         subscribe: (setter: (newState: any) => void) => {
           listeners.add(setter);
           return () => {
@@ -172,10 +186,6 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
           };
         },
       };
-      newSubContext.cleanup = onSubscribe(
-        newSubContext.updateState,
-        newSubContext.value,
-      );
       globalStateContext.subContexts.set(
         stateKey,
         newSubContext as SubContext<any>,
