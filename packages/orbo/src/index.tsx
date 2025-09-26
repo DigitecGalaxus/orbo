@@ -154,13 +154,6 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
                 ? (newState as (prev: T) => T)(newSubContext.value)
                 : newState;
             listeners.forEach((setter) => setter(newSubContext.value));
-
-            // Update the stored value of the corresponding subContext
-            // This is important for newly mounted components using existing and initialized subContexts
-            const oldSubContext = globalStateContext?.subContexts.get(stateKey);
-            if (oldSubContext) {
-              oldSubContext.value = newSubContext.value;
-            }
           },
         cleanup: undefined,
         subscribe: (setter: (newState: any) => void) => {
