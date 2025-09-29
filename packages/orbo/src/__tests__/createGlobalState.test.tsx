@@ -881,7 +881,7 @@ describe("Orbo - createGlobalState", () => {
         onSubscribe: (updateState, initialState) => {
           updateStateSpy(initialState);
           // Call updateState directly during onSubscribe
-          // Warning such a pattern is discouraged as this pattern 
+          // Warning such a pattern is discouraged as this pattern
           // is very likely to cause hydration mismatches
           updateState("updated-from-onSubscribe");
           return () => {}; // Return cleanup function
