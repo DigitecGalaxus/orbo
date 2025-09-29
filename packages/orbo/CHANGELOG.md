@@ -1,5 +1,11 @@
 # orbo
 
+## 3.2.0
+
+### Minor Changes
+
+- 32f86ef: Add `isHydrated` flag to initializeState
+
 ## 3.1.0
 
 ### Minor Changes
