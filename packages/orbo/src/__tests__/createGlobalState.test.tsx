@@ -911,6 +911,97 @@ describe("Orbo - createGlobalState", () => {
     });
   });
 
+  describe("isHydrated SSR/Hydration Flag", () => {
+    test("isHydrated is false during SSR and initial render", async () => {
+      let capturedIsHydrated: boolean | null = null;
+      const [useTestState] = createGlobalState({
+        initialState: (_, isHydrated) => {
+          capturedIsHydrated = isHydrated;
+          return "test-value";
+        },
+      });
+
+      const TestComponent = () => {
+        const state = useTestState();
+        return <div data-testid="state">{state}</div>;
+      };
+
+      const { container, ssrHtml, cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <TestComponent />
+        </GlobalStateProvider>,
+      );
+      cleanupFunctions.push(cleanup);
+
+      // During SSR and initial hydration, isHydrated should be false
+      expect(capturedIsHydrated).toBe(false);
+      expect(ssrHtml).toContain("test-value");
+      expect(
+        container.querySelector('[data-testid="state"]'),
+      ).toHaveTextContent("test-value");
+    });
+
+    test("isHydrated becomes true after hydration completes", async () => {
+      let hydrationStates: boolean[] = [];
+      const [useTestState] = createGlobalState({
+        initialState: (_, isHydrated) => {
+          hydrationStates.push(isHydrated);
+          return `state-${isHydrated ? "hydrated" : "not-hydrated"}`;
+        },
+        persistState: false, // Force re-initialization when component unmounts/remounts
+      });
+
+      const TestComponent = () => {
+        const state = useTestState();
+        return <div data-testid="state">{state}</div>;
+      };
+
+      // First, create a component that will trigger re-initialization after hydration
+      const ParentComponent = () => {
+        const [showComponent, setShowComponent] = useState(true);
+        return (
+          <div>
+            <button
+              data-testid="toggle"
+              onClick={() => setShowComponent(!showComponent)}
+            >
+              Toggle
+            </button>
+            {showComponent && <TestComponent />}
+          </div>
+        );
+      };
+
+      const { container, cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <ParentComponent />
+        </GlobalStateProvider>,
+      );
+      cleanupFunctions.push(cleanup);
+
+      // Initial state should use isHydrated: false
+      expect(hydrationStates).toContain(false);
+      expect(
+        container.querySelector('[data-testid="state"]'),
+      ).toHaveTextContent("state-not-hydrated");
+
+      // Toggle component off and on to trigger re-initialization after hydration
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      });
+
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      });
+
+      // Now isHydrated should be true (because useEffect has run and updated the flag)
+      expect(hydrationStates).toContain(true);
+      expect(
+        container.querySelector('[data-testid="state"]'),
+      ).toHaveTextContent("state-hydrated");
+    });
+  });
+
   describe("Setters work correctly across components", () => {
     test("Reuse existing initialized context in freshly mounted new component", async () => {
       const [useTheme, useSetTheme] = createGlobalState({
