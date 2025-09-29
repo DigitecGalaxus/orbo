@@ -151,9 +151,9 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
         initialized: true,
         // Calculating the initial state on sub context creation (SSR & client)
         value: config.initialState(globalStateContext.initialValues),
+        // Update state has the same shape like React's setState
+        // an can be called in onSubscribe or by the global state setter hook
         updateState:
-          // Update state has the same shape like React's setState
-          // an can be called in onSubscribe or by the global state setter hook
           (newState: T | ((prev: T) => T)) => {
             newSubContext.value =
               typeof newState === "function"
