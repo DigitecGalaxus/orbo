@@ -144,32 +144,26 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
   ): SubContext<T> {
     let subContext = globalStateContext.subContexts.get(stateKey);
     if (!subContext) {
-      let value = config.initialState(globalStateContext.initialValues);
-      // Update state has the same shape like React's setState
-      // an can be alled in onSubscribe or by the global state setter hook
-      const updateState = (newState: T | ((prev: T) => T)) => {
-        const existingSubContext =
-          globalStateContext?.subContexts.get(stateKey);
-        if (!existingSubContext) {
-          return;
-        }
-        const updatedValue =
-          typeof newState === "function"
-            ? (newState as (prev: T) => T)(existingSubContext.value)
-            : newState;
-        listeners.forEach((setter) => setter(updatedValue));
-
-        // Update the stored value of the corresponding subContext
-        // This is important for newly mounted components using existing and initialized subContexts
-        existingSubContext.value = updatedValue;
-      };
       const listeners = new Set<(newState: any) => any>();
       const newSubContext: SubContext<T> = {
+        // Helper flag which is set to false after the last subscriber unmounts
+        // (needed for persistState: true)
         initialized: true,
-        value,
+        // Calculating the initial state on sub context creation (SSR & client)
+        value: config.initialState(globalStateContext.initialValues),
+        // Update state has the same shape like React's setState
+        // and can be called in onSubscribe or by the global state setter hook
+        updateState: (newState: T | ((prev: T) => T)) => {
+          newSubContext.value =
+            typeof newState === "function"
+              ? (newState as (prev: T) => T)(newSubContext.value)
+              : newState;
+          listeners.forEach((setter) => setter(newSubContext.value));
+        },
+        // The cleanup function is the return value of onSubscribe
+        cleanup: undefined,
         listeners,
-        updateState,
-        cleanup: onSubscribe(updateState, value),
+        // The internal subscribe function for the orbo hooks factory
         subscribe: (setter: (newState: any) => void) => {
           listeners.add(setter);
           return () => {
@@ -186,12 +180,24 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
           };
         },
       };
+      // Call onSubscribe when the subcontext is created
+      // This must happen after newSubContext is fully initialized as it allows
+      // calling updateState in onSubscribe
+      newSubContext.cleanup = onSubscribe(
+        newSubContext.updateState,
+        newSubContext.value,
+      );
+      // Attach the subcontext to the GlobalState provider to ensure separate instances
+      // for multiple SSR Requests
       globalStateContext.subContexts.set(
         stateKey,
         newSubContext as SubContext<any>,
       );
       return newSubContext;
     } else if (!subContext.initialized) {
+      // Re-initialize once the first component subscribes again
+      // This is necessary if persistState is true and the last component unsubscribed
+      // as no new subcontext will be created but onSubscribe must be called again
       subContext.cleanup = onSubscribe(
         subContext.updateState,
         subContext.value,
