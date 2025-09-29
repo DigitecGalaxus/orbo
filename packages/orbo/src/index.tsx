@@ -25,7 +25,7 @@ export interface GlobalStateInitialValues {}
 
 interface GlobalStateConfig<T = unknown> {
   /** Function that receives the initial values from `GlobalStateProvider` and returns the initial state */
-  initialState: (globalStateInitialValues: GlobalStateInitialValues) => T;
+  initialState: (globalStateInitialValues: GlobalStateInitialValues, isHydrated: boolean) => T;
   /**
    * Optional client side exclusive function to synchronize state with external sources
    *
@@ -55,6 +55,8 @@ interface GlobalStateContextData {
   initialValues: GlobalStateInitialValues;
   /** Internal state management */
   subContexts: Map<GlobalStateConfig<any>, SubContext<any>>;
+  /** Flag that is true after the first client-side render */
+  isHydrated: boolean;
 }
 
 // Internal statement API of Orbo
@@ -98,7 +100,14 @@ export function GlobalStateProvider({
   const contextData = useRef<GlobalStateContextData>({
     initialValues,
     subContexts: new Map(),
+    isHydrated: false,
   });
+  useEffect(() => {
+    // Mark as hydrated after the first client-side render
+    // to distinguish global state initializations during hydration
+    // from later state initializations caused by user interactions
+    contextData.current.isHydrated = true;
+  }, []);
   return (
     <GlobalStateContext.Provider value={contextData.current}>
       {children}
@@ -150,7 +159,7 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
         // (needed for persistState: true)
         initialized: true,
         // Calculating the initial state on sub context creation (SSR & client)
-        value: config.initialState(globalStateContext.initialValues),
+        value: config.initialState(globalStateContext.initialValues, globalStateContext.isHydrated),
         // Update state has the same shape like React's setState
         // and can be called in onSubscribe or by the global state setter hook
         updateState: (newState: T | ((prev: T) => T)) => {

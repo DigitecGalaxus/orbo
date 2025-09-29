@@ -223,9 +223,30 @@ const [useValue, useSetValue] = createGlobalState({
 
 **Parameters:**
 
-- `config.initialState`: Function that receives initial values and returns the initial state
+- `config.initialState`: Function that receives initial values and `isHydrated` flag, returns the initial state
 - `config.onSubscribe` _(optional)_: Function called when first component subscribes (client-side only). Receives `setState` and `currentState`. Can return a cleanup function which runs when the last component unsubscribes
 - `config.persistState` _(optional)_: When `true`, keeps state in memory after components unmount (default: `true`)
+
+#### Handling Client-Only Values with `isHydrated`
+
+When working with client-only APIs like `localStorage`, `sessionStorage`, or browser APIs that aren't available during server-side rendering, there is the `isHydrated` parameter to optimize initial state handling
+
+In general it is best practices **NOT to mix SSR with client-only state** as doing so creates hydrarion mismatches issues
+
+Use the `isHydrated` flag only as a last resort when you absolutely must read from client-only APIs:
+
+```tsx
+const [useTheme] = createGlobalState({
+  initialState: (initialValues, isHydrated) => {
+    if (!isHydrated) {
+      // During SSR and initial hydration: use server value to avoid mismatch
+      return 'light';
+    }
+    // After hydration: safe to use client-only APIs
+    return localStorage.getItem('theme') || 'light';
+  }
+});
+```
 
 **Returns:**
 
