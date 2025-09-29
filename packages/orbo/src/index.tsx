@@ -153,14 +153,13 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
         value: config.initialState(globalStateContext.initialValues),
         // Update state has the same shape like React's setState
         // an can be called in onSubscribe or by the global state setter hook
-        updateState:
-          (newState: T | ((prev: T) => T)) => {
-            newSubContext.value =
-              typeof newState === "function"
-                ? (newState as (prev: T) => T)(newSubContext.value)
-                : newState;
-            listeners.forEach((setter) => setter(newSubContext.value));
-          },
+        updateState: (newState: T | ((prev: T) => T)) => {
+          newSubContext.value =
+            typeof newState === "function"
+              ? (newState as (prev: T) => T)(newSubContext.value)
+              : newState;
+          listeners.forEach((setter) => setter(newSubContext.value));
+        },
         // The cleanup function is the return value of onSubscribe
         cleanup: undefined,
         listeners,
