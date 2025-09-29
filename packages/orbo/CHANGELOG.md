@@ -1,5 +1,11 @@
 # orbo
 
+## 3.1.0
+
+### Minor Changes
+
+- 22485f5: Internal code cleanup and improved test coverage for `onSubscribe` initialization
+
 ## 3.0.2
 
 ### Patch Changes
