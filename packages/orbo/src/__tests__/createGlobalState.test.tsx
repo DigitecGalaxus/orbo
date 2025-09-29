@@ -873,6 +873,44 @@ describe("Orbo - createGlobalState", () => {
     });
   });
 
+  describe("onSubscribe updateState Integration", () => {
+    test("updateState called during onSubscribe immediately updates component state", async () => {
+      const updateStateSpy = vi.fn();
+      const [useTestState] = createGlobalState({
+        initialState: () => "initial",
+        onSubscribe: (updateState, initialState) => {
+          updateStateSpy(initialState);
+          // Call updateState directly during onSubscribe
+          // Warning such a pattern is discouraged as this pattern 
+          // is very likely to cause hydration mismatches
+          updateState("updated-from-onSubscribe");
+          return () => {}; // Return cleanup function
+        },
+      });
+
+      const TestComponent = () => {
+        const state = useTestState();
+        return <div data-testid="state">{state}</div>;
+      };
+
+      const { container, cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <TestComponent />
+        </GlobalStateProvider>,
+      );
+      cleanupFunctions.push(cleanup);
+
+      // Verify onSubscribe was called with initial state
+      expect(updateStateSpy).toHaveBeenCalledOnce();
+      expect(updateStateSpy).toHaveBeenCalledWith("initial");
+
+      // Verify component shows updated state from onSubscribe
+      expect(
+        container.querySelector('[data-testid="state"]'),
+      ).toHaveTextContent("updated-from-onSubscribe");
+    });
+  });
+
   describe("Setters work correctly across components", () => {
     test("Reuse existing initialized context in freshly mounted new component", async () => {
       const [useTheme, useSetTheme] = createGlobalState({
