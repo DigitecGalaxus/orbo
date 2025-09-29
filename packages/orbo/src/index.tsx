@@ -25,7 +25,10 @@ export interface GlobalStateInitialValues {}
 
 interface GlobalStateConfig<T = unknown> {
   /** Function that receives the initial values from `GlobalStateProvider` and returns the initial state */
-  initialState: (globalStateInitialValues: GlobalStateInitialValues, isHydrated: boolean) => T;
+  initialState: (
+    globalStateInitialValues: GlobalStateInitialValues,
+    isHydrated: boolean,
+  ) => T;
   /**
    * Optional client side exclusive function to synchronize state with external sources
    *
@@ -159,7 +162,10 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
         // (needed for persistState: true)
         initialized: true,
         // Calculating the initial state on sub context creation (SSR & client)
-        value: config.initialState(globalStateContext.initialValues, globalStateContext.isHydrated),
+        value: config.initialState(
+          globalStateContext.initialValues,
+          globalStateContext.isHydrated,
+        ),
         // Update state has the same shape like React's setState
         // and can be called in onSubscribe or by the global state setter hook
         updateState: (newState: T | ((prev: T) => T)) => {

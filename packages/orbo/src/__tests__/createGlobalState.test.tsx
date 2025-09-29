@@ -936,7 +936,9 @@ describe("Orbo - createGlobalState", () => {
       // During SSR and initial hydration, isHydrated should be false
       expect(capturedIsHydrated).toBe(false);
       expect(ssrHtml).toContain("test-value");
-      expect(container.querySelector('[data-testid="state"]')).toHaveTextContent("test-value");
+      expect(
+        container.querySelector('[data-testid="state"]'),
+      ).toHaveTextContent("test-value");
     });
 
     test("isHydrated becomes true after hydration completes", async () => {
@@ -944,7 +946,7 @@ describe("Orbo - createGlobalState", () => {
       const [useTestState] = createGlobalState({
         initialState: (_, isHydrated) => {
           hydrationStates.push(isHydrated);
-          return `state-${isHydrated ? 'hydrated' : 'not-hydrated'}`;
+          return `state-${isHydrated ? "hydrated" : "not-hydrated"}`;
         },
         persistState: false, // Force re-initialization when component unmounts/remounts
       });
@@ -979,7 +981,9 @@ describe("Orbo - createGlobalState", () => {
 
       // Initial state should use isHydrated: false
       expect(hydrationStates).toContain(false);
-      expect(container.querySelector('[data-testid="state"]')).toHaveTextContent("state-not-hydrated");
+      expect(
+        container.querySelector('[data-testid="state"]'),
+      ).toHaveTextContent("state-not-hydrated");
 
       // Toggle component off and on to trigger re-initialization after hydration
       act(() => {
@@ -992,7 +996,9 @@ describe("Orbo - createGlobalState", () => {
 
       // Now isHydrated should be true (because useEffect has run and updated the flag)
       expect(hydrationStates).toContain(true);
-      expect(container.querySelector('[data-testid="state"]')).toHaveTextContent("state-hydrated");
+      expect(
+        container.querySelector('[data-testid="state"]'),
+      ).toHaveTextContent("state-hydrated");
     });
   });
 
