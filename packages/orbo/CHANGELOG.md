@@ -1,5 +1,11 @@
 # orbo
 
+## 3.3.0
+
+### Minor Changes
+
+- e8e71ed: Calling useState inside onSubscribe will no longer cause hydration missmatches
+
 ## 3.2.0
 
 ### Minor Changes
