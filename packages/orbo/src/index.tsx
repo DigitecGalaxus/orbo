@@ -158,7 +158,9 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
   const onSubscribe =
     (typeof window !== "undefined" && config.onSubscribe) || (() => {});
   // Create a new subcontext
-  function initializeSubContext(globalStateContext: GlobalStateContextData): SubContext<T> {
+  function initializeSubContext(
+    globalStateContext: GlobalStateContextData,
+  ): SubContext<T> {
     let subContext = globalStateContext.subContexts.get(stateKey);
     if (!subContext) {
       const listeners = new Set<(newState: any) => any>();
@@ -167,7 +169,10 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
         // (needed for persistState: true)
         initialized: false,
         // Calculating the initial state on sub context creation (SSR & client)
-        value: config.initialState(globalStateContext.initialValues, globalStateContext.isHydrated),
+        value: config.initialState(
+          globalStateContext.initialValues,
+          globalStateContext.isHydrated,
+        ),
         // Update state has the same shape like React's setState
         // and can be called in onSubscribe or by the global state setter hook
         updateState: (newState: T | ((prev: T) => T)) => {
@@ -185,8 +190,8 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
           // wait for it to be called from useEffect in GlobalStateProvider
           if (globalStateContext.isHydrated && !newSubContext.initialized) {
             newSubContext.cleanup = onSubscribe(
-                newSubContext.updateState,
-                newSubContext.value,
+              newSubContext.updateState,
+              newSubContext.value,
             );
             newSubContext.initialized = true;
           }
@@ -216,7 +221,10 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
       newSubContext.triggerOnSubscribe();
       // Attach the subcontext to the GlobalState provider to ensure separate instances
       // for multiple SSR Requests
-      globalStateContext.subContexts.set(stateKey, newSubContext as SubContext<any>);
+      globalStateContext.subContexts.set(
+        stateKey,
+        newSubContext as SubContext<any>,
+      );
       return newSubContext;
     }
     // Re-initialize once the first component subscribes again
