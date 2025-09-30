@@ -129,11 +129,7 @@ export const GlobalStateProvider = ({
     // from later state initializations caused by user interactions
     contextData._isHydrated = true;
     // Trigger onSubscribe now that hydration is done
-    contextData._subContexts.forEach((subContext) => {
-      if (subContext._listeners.length > 0) {
-        subContext._triggerOnSubscribe();
-      }
-    });
+    contextData._subContexts.forEach((subContext) => subContext._triggerOnSubscribe());
   }, []);
 
   return (
