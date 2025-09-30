@@ -220,7 +220,7 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
       // for multiple SSR Requests
       subContexts.set(stateKey, newSubContext as SubContext<any>);
       return newSubContext;
-    } 
+    }
     // Re-initialize once the first component subscribes again
     // This is necessary if persistState is true and the last component unsubscribed
     // as no new subcontext will be created but onSubscribe must be called again
