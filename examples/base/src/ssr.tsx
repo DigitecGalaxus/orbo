@@ -4,15 +4,14 @@ import { Writable } from "stream";
 import type HtmlWebpackPlugin from "html-webpack-plugin";
 import App from "./_app";
 
+/** Executed by html-webpack-plugin (see rspack.config.ts) */
 export default async function ssrTemplate(
   templateParameters: HtmlWebpackPlugin.TemplateParameter,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const options = templateParameters.htmlWebpackPlugin?.options || {};
-
     try {
       const element = React.createElement(App);
-
       const { pipe } = renderToPipeableStream(element, {
         onShellReady() {
           const chunks: Buffer[] = [];
@@ -29,20 +28,18 @@ export default async function ssrTemplate(
 
           writableStream.on("finish", () => {
             const html = Buffer.concat(chunks).toString("utf8");
-
             // Create complete HTML document
             const fullHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${options.title || "Orbo - Global State Demo"}</title>
+    <title>${options.title}</title>
 </head>
 <body>
     <div id="root">${html}</div>
 </body>
 </html>`;
-
             resolve(fullHtml);
           });
 
