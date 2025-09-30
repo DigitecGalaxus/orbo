@@ -129,13 +129,13 @@ export const GlobalStateProvider = ({
     // from later state initializations caused by user interactions
     contextData._isHydrated = true;
     // Trigger onSubscribe now that hydration is done
-    contextData._subContexts.forEach((subContext) => subContext._triggerOnSubscribe());
+    contextData._subContexts.forEach((subContext) =>
+      subContext._triggerOnSubscribe(),
+    );
   }, []);
 
-  return (
-    <GlobalStateContext.Provider value={contextData} {...props} />
-  );
-}
+  return <GlobalStateContext.Provider value={contextData} {...props} />;
+};
 
 /**
  * Creates a pair of hooks for managing global state that is shared across components.
@@ -172,7 +172,9 @@ export const createGlobalState = <T,>(config: GlobalStateConfig<T>) => {
   ): SubContext<T> => {
     const subContextFromCache = globalStateContext._subContexts.get(config);
     const listeners: Array<(newState: any) => any> = [];
-    const subContext = subContextFromCache || {
+    const subContext =
+      subContextFromCache ||
+      ({
         // Helper flag which is set to false after the last subscriber unmounts
         // (needed for persistState: true)
         _initialized: false,
@@ -222,7 +224,7 @@ export const createGlobalState = <T,>(config: GlobalStateConfig<T>) => {
             }
           };
         },
-      } satisfies SubContext<T>;
+      } satisfies SubContext<T>);
 
     // Attach the subcontext to the GlobalState provider to ensure separate instances
     // for multiple SSR Requests
@@ -236,41 +238,39 @@ export const createGlobalState = <T,>(config: GlobalStateConfig<T>) => {
     // (Re-)initialize once the first component subscribes
     subContext._triggerOnSubscribe();
     return subContext as SubContext<T>;
-  }
+  };
   return [
     // Read from global state
     (): T => {
-    const globalStateContext = use(GlobalStateContext)!;
-    // Initialize state only once
-    const [state, setState] = useState<T>(
-      () => initializeSubContext(globalStateContext)._value
-    );
-    // Rerender if the global state changes
-    useEffect(
-      () => initializeSubContext(globalStateContext)._subscribe(setState),
-      []
-    );
-    return state;
-  },
+      const globalStateContext = use(GlobalStateContext)!;
+      // Initialize state only once
+      const [state, setState] = useState<T>(
+        () => initializeSubContext(globalStateContext)._value,
+      );
+      // Rerender if the global state changes
+      useEffect(
+        () => initializeSubContext(globalStateContext)._subscribe(setState),
+        [],
+      );
+      return state;
+    },
     // Write to global state
-    (): (newState: T | ((prev: T) => T)) => void => {
+    (): ((newState: T | ((prev: T) => T)) => void) => {
       const globalStateContext = use(GlobalStateContext)!;
       // This effect prevents a cleanup as long as at least one setter is mounted
       useEffect(
-        () => initializeSubContext(globalStateContext)._subscribe(() => {
-          /* no rerender for the setter */
-        }),
-        []
+        () =>
+          initializeSubContext(globalStateContext)._subscribe(() => {
+            /* no rerender for the setter */
+          }),
+        [],
       );
-      return useCallback(
-        (newState: T | ((prev: T) => T)) => {
-          initializeSubContext(globalStateContext)._updateState(newState);
-        },
-        []
-      );
+      return useCallback((newState: T | ((prev: T) => T)) => {
+        initializeSubContext(globalStateContext)._updateState(newState);
+      }, []);
     },
   ] as const;
-}
+};
 
 const globalStateMemoCache = new WeakMap<
   Function,
