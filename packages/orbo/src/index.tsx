@@ -1,5 +1,6 @@
 import {
   createContext,
+  createElement,
   use,
   useCallback,
   useEffect,
@@ -132,7 +133,7 @@ export const GlobalStateProvider = ({
     );
   }, []);
 
-  return <GlobalStateContext.Provider {...props} value={contextData} />;
+  return createElement(GlobalStateContext, { ...props, value: contextData });
 };
 
 /**
