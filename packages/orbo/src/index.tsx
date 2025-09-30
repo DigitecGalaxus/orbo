@@ -70,6 +70,7 @@ interface SubContext<T> {
   subscribe: (setter: (prev: T) => void) => () => void;
   updateState: (newState: T | ((prev: T) => T)) => void;
   cleanup: void | undefined | (() => void);
+  triggerOnSubscribe: () => void;
 }
 
 const GlobalStateContext = createContext<GlobalStateContextData | undefined>(
@@ -110,13 +111,10 @@ export function GlobalStateProvider({
     // to distinguish global state initializations during hydration
     // from later state initializations caused by user interactions
     contextData.isHydrated = true;
-    contextData.subContexts.forEach((subContext, config) => {
-      if (!subContext.initialized && subContext.listeners.size > 0) {
-        subContext.cleanup = config.onSubscribe?.(
-          subContext.updateState,
-          subContext.value,
-        );
-        subContext.initialized = true;
+    // Trigger onSubscribe now that hydration is done
+    contextData.subContexts.forEach((subContext) => {
+      if (subContext.listeners.size > 0) {
+        subContext.triggerOnSubscribe();
       }
     });
   }, []);
@@ -160,12 +158,10 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
   const onSubscribe =
     (typeof window !== "undefined" && config.onSubscribe) || (() => {});
   // Create a new subcontext
-  function initializeSubContext({
-    initialValues,
-    subContexts,
-    isHydrated,
-  }: GlobalStateContextData): SubContext<T> {
-    let subContext = subContexts.get(stateKey);
+  function initializeSubContext(
+    globalStateContext: GlobalStateContextData,
+  ): SubContext<T> {
+    let subContext = globalStateContext.subContexts.get(stateKey);
     if (!subContext) {
       const listeners = new Set<(newState: any) => any>();
       const newSubContext: SubContext<T> = {
@@ -173,7 +169,10 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
         // (needed for persistState: true)
         initialized: false,
         // Calculating the initial state on sub context creation (SSR & client)
-        value: config.initialState(initialValues, isHydrated),
+        value: config.initialState(
+          globalStateContext.initialValues,
+          globalStateContext.isHydrated,
+        ),
         // Update state has the same shape like React's setState
         // and can be called in onSubscribe or by the global state setter hook
         updateState: (newState: T | ((prev: T) => T)) => {
@@ -185,6 +184,19 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
         },
         // The cleanup function is the return value of onSubscribe
         cleanup: undefined,
+        // Internal helper to fire onSubscribe once the first component subscribes
+        triggerOnSubscribe: () => {
+          // Call it directly if the page is already hydrated otherwise
+          // wait for it to be called from useEffect in GlobalStateProvider
+          if (globalStateContext.isHydrated && !newSubContext.initialized) {
+            newSubContext.cleanup = onSubscribe(
+              newSubContext.updateState,
+              newSubContext.value,
+            );
+            newSubContext.initialized = true;
+          }
+        },
+        // Listeners from all components watching the state value of this subcontext
         listeners,
         // The internal subscribe function for the orbo hooks factory
         subscribe: (setter: (newState: any) => void) => {
@@ -195,7 +207,7 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
               // Ensure re-initialization on next subscribe
               newSubContext.initialized = false;
               if (config.persistState === false) {
-                subContexts.delete(stateKey);
+                globalStateContext.subContexts.delete(stateKey);
               }
               // Always call cleanup when last subscriber unmounts
               newSubContext.cleanup?.();
@@ -206,33 +218,20 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
       // Call onSubscribe when the subcontext is created
       // This must happen after newSubContext is fully initialized as it allows
       // calling updateState in onSubscribe
-      //
-      // Only call onSubscribe if the GlobalStateProvider is already hydrated
-      // to avoid hydration mismatches
-      if (isHydrated) {
-        newSubContext.cleanup = onSubscribe(
-          newSubContext.updateState,
-          newSubContext.value,
-        );
-        newSubContext.initialized = true;
-      }
+      newSubContext.triggerOnSubscribe();
       // Attach the subcontext to the GlobalState provider to ensure separate instances
       // for multiple SSR Requests
-      subContexts.set(stateKey, newSubContext as SubContext<any>);
+      globalStateContext.subContexts.set(
+        stateKey,
+        newSubContext as SubContext<any>,
+      );
       return newSubContext;
     }
     // Re-initialize once the first component subscribes again
     // This is necessary if persistState is true and the last component unsubscribed
     // as no new subcontext will be created but onSubscribe must be called again
-    //
-    // Prevent re-initialization before hydration
-    else if (!subContext.initialized && isHydrated) {
-      subContext.cleanup = onSubscribe(
-        subContext.updateState,
-        subContext.value,
-      );
-      subContext.initialized = true;
-    }
+    subContext.triggerOnSubscribe();
+
     return subContext;
   }
   return [
