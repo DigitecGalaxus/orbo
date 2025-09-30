@@ -30,6 +30,12 @@ interface GlobalStateConfig<T = unknown> {
     isHydrated: boolean,
   ) => T;
   /**
+   * Optional client side exclusive function to run after hydration
+   *
+   * Note: This function is NOT called during server-side rendering
+   */
+  onHydrate: () => void;
+  /**
    * Optional client side exclusive function to synchronize state with external sources
    *
    * Called when the first component subscribes (mounts), and can return a cleanup function
@@ -68,6 +74,7 @@ interface SubContext<T> {
   initialized: boolean;
   listeners: Set<(newState: T) => void>;
   subscribe: (setter: (prev: T) => void) => () => void;
+  onHydrate: () => void;
   updateState: (newState: T | ((prev: T) => T)) => void;
   cleanup: void | undefined | (() => void);
 }
@@ -110,6 +117,10 @@ export function GlobalStateProvider({
     // to distinguish global state initializations during hydration
     // from later state initializations caused by user interactions
     contextData.current.isHydrated = true;
+    // Call onHydrate for all subcontexts
+    contextData.current.subContexts.forEach((subContext) => {
+      subContext.onHydrate();
+    });
   }, []);
   return (
     <GlobalStateContext.Provider value={contextData.current}>
@@ -150,6 +161,9 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
   // Only call onSubscribe on client-side (not during SSR)
   const onSubscribe =
     (typeof window !== "undefined" && config.onSubscribe) || (() => {});
+  // Only call onHydrate on client-side (not during SSR)
+  const onHydrate =
+    (typeof window !== "undefined" && config.onHydrate) || (() => {});
   // Create a new subcontext
   function initializeSubContext(
     globalStateContext: GlobalStateContextData,
@@ -194,6 +208,7 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
             }
           };
         },
+        onHydrate,
       };
       // Call onSubscribe when the subcontext is created
       // This must happen after newSubContext is fully initialized as it allows
