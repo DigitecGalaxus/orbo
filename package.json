@@ -16,7 +16,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "dev:example": "pnpm --filter example-dark-mode dev",
+    "dev:example": "pnpm --filter orbo-example-base dev",
     "test": "pnpm --filter orbo test",
     "test:run": "pnpm --filter orbo test:run",
     "typecheck": "pnpm -r typecheck",
