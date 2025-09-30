@@ -899,15 +899,19 @@ describe("Orbo - createGlobalState", () => {
         </GlobalStateProvider>,
       );
       cleanupFunctions.push(cleanup);
-
+      // Initial render shows initial state directly after hydration
+      expect(
+        container.querySelector('[data-testid="state"]'),
+      ).toHaveTextContent("initial");
+      // Wait until render reflects updated state cause by useEffect directly after hydration
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-testid="state"]'),
+        ).toHaveTextContent("updated-from-onSubscribe");
+      });
       // Verify onSubscribe was called with initial state
       expect(updateStateSpy).toHaveBeenCalledOnce();
       expect(updateStateSpy).toHaveBeenCalledWith("initial");
-
-      // Verify component shows updated state from onSubscribe
-      expect(
-        container.querySelector('[data-testid="state"]'),
-      ).toHaveTextContent("updated-from-onSubscribe");
     });
   });
 
@@ -999,6 +1003,48 @@ describe("Orbo - createGlobalState", () => {
       expect(
         container.querySelector('[data-testid="state"]'),
       ).toHaveTextContent("state-hydrated");
+    });
+  });
+
+  describe("onSubscribe Execution Timing", () => {
+    test("child useEffect executes BEFORE onSubscribe is called", async () => {
+      const executionOrder: string[] = [];
+
+      const [useTestState] = createGlobalState({
+        initialState: () => "initial",
+        onSubscribe: (setState) => {
+          executionOrder.push("onSubscribe");
+          setState("updated-from-onSubscribe");
+          return () => {};
+        },
+      });
+
+      const TestComponent = () => {
+        const state = useTestState();
+
+        React.useEffect(() => {
+          executionOrder.push("child-useEffect");
+        }, []);
+
+        return <div data-testid="state">{state}</div>;
+      };
+
+      const { cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <TestComponent />
+        </GlobalStateProvider>,
+      );
+      cleanupFunctions.push(cleanup);
+
+      // Wait for all effects to complete
+      await waitFor(() => {
+        expect(executionOrder).toContain("onSubscribe");
+      });
+
+      // Verify child useEffect ran before onSubscribe
+      expect(executionOrder.join(" -> ")).toBe(
+        "child-useEffect -> onSubscribe",
+      );
     });
   });
 

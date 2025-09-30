@@ -104,15 +104,24 @@ export function GlobalStateProvider({
     initialValues,
     subContexts: new Map(),
     isHydrated: false,
-  });
+  }).current;
   useEffect(() => {
     // Mark as hydrated after the first client-side render
     // to distinguish global state initializations during hydration
     // from later state initializations caused by user interactions
-    contextData.current.isHydrated = true;
+    contextData.isHydrated = true;
+    contextData.subContexts.forEach((subContext, config) => {
+      if (!subContext.initialized && subContext.listeners.size > 0) {
+        subContext.cleanup = config.onSubscribe?.(
+          subContext.updateState,
+          subContext.value,
+        );
+        subContext.initialized = true;
+      }
+    });
   }, []);
   return (
-    <GlobalStateContext.Provider value={contextData.current}>
+    <GlobalStateContext.Provider value={contextData}>
       {children}
     </GlobalStateContext.Provider>
   );
@@ -151,21 +160,20 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
   const onSubscribe =
     (typeof window !== "undefined" && config.onSubscribe) || (() => {});
   // Create a new subcontext
-  function initializeSubContext(
-    globalStateContext: GlobalStateContextData,
-  ): SubContext<T> {
-    let subContext = globalStateContext.subContexts.get(stateKey);
+  function initializeSubContext({
+    initialValues,
+    subContexts,
+    isHydrated,
+  }: GlobalStateContextData): SubContext<T> {
+    let subContext = subContexts.get(stateKey);
     if (!subContext) {
       const listeners = new Set<(newState: any) => any>();
       const newSubContext: SubContext<T> = {
         // Helper flag which is set to false after the last subscriber unmounts
         // (needed for persistState: true)
-        initialized: true,
+        initialized: false,
         // Calculating the initial state on sub context creation (SSR & client)
-        value: config.initialState(
-          globalStateContext.initialValues,
-          globalStateContext.isHydrated,
-        ),
+        value: config.initialState(initialValues, isHydrated),
         // Update state has the same shape like React's setState
         // and can be called in onSubscribe or by the global state setter hook
         updateState: (newState: T | ((prev: T) => T)) => {
@@ -187,7 +195,7 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
               // Ensure re-initialization on next subscribe
               newSubContext.initialized = false;
               if (config.persistState === false) {
-                globalStateContext.subContexts.delete(stateKey);
+                subContexts.delete(stateKey);
               }
               // Always call cleanup when last subscriber unmounts
               newSubContext.cleanup?.();
@@ -198,21 +206,27 @@ export function createGlobalState<T>(config: GlobalStateConfig<T>) {
       // Call onSubscribe when the subcontext is created
       // This must happen after newSubContext is fully initialized as it allows
       // calling updateState in onSubscribe
-      newSubContext.cleanup = onSubscribe(
-        newSubContext.updateState,
-        newSubContext.value,
-      );
+      //
+      // Only call onSubscribe if the GlobalStateProvider is already hydrated
+      // to avoid hydration mismatches
+      if (isHydrated) {
+        newSubContext.cleanup = onSubscribe(
+          newSubContext.updateState,
+          newSubContext.value,
+        );
+        newSubContext.initialized = true;
+      }
       // Attach the subcontext to the GlobalState provider to ensure separate instances
       // for multiple SSR Requests
-      globalStateContext.subContexts.set(
-        stateKey,
-        newSubContext as SubContext<any>,
-      );
+      subContexts.set(stateKey, newSubContext as SubContext<any>);
       return newSubContext;
-    } else if (!subContext.initialized) {
-      // Re-initialize once the first component subscribes again
-      // This is necessary if persistState is true and the last component unsubscribed
-      // as no new subcontext will be created but onSubscribe must be called again
+    }
+    // Re-initialize once the first component subscribes again
+    // This is necessary if persistState is true and the last component unsubscribed
+    // as no new subcontext will be created but onSubscribe must be called again
+    //
+    // Prevent re-initialization before hydration
+    else if (!subContext.initialized && isHydrated) {
       subContext.cleanup = onSubscribe(
         subContext.updateState,
         subContext.value,

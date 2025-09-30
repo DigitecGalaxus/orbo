@@ -4,6 +4,8 @@ import { createGlobalState } from "orbo";
 export const [useTimer, useSetTimer] = createGlobalState({
   initialState: () => 0,
   onSubscribe: (setState) => {
+    setState(1);
+
     const interval = setInterval(() => {
       setState((prev) => prev + 1);
     }, 1000);
