@@ -81,7 +81,7 @@ interface SubContext<T> {
   _subscribe: (setter: (prev: T) => void) => () => void;
   _updateState: (newState: T | ((prev: T) => T)) => void;
   /** Cleanup function returned by onSubscribe */
-  _cleanup: void | undefined | (() => void);
+  _cleanup: null | void | undefined | (() => void);
   /**
    * Internal helper to call onSubscribe once the first component subscribes
    * it is safe to call this multiple times as it checks the _initialized flag
@@ -89,9 +89,7 @@ interface SubContext<T> {
   _triggerOnSubscribe: () => void;
 }
 
-const GlobalStateContext = createContext<GlobalStateContextData | undefined>(
-  undefined,
-);
+const GlobalStateContext = createContext<GlobalStateContextData | null>(null);
 
 /**
  * Root provider that enables global state management for child components.
@@ -134,7 +132,7 @@ export const GlobalStateProvider = ({
     );
   }, []);
 
-  return <GlobalStateContext.Provider value={contextData} {...props} />;
+  return <GlobalStateContext.Provider {...props} value={contextData} />;
 };
 
 /**
@@ -193,7 +191,7 @@ export const createGlobalState = <T,>(config: GlobalStateConfig<T>) => {
           listeners.forEach((setter) => setter(subContext._value));
         },
         // The cleanup function is the return value of onSubscribe
-        _cleanup: undefined,
+        _cleanup: null,
         // Internal helper to fire onSubscribe once the first component subscribes
         _triggerOnSubscribe: () => {
           // Call it directly if the page is already hydrated otherwise
