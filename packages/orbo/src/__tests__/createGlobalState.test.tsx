@@ -1048,6 +1048,193 @@ describe("Orbo - createGlobalState", () => {
     });
   });
 
+  describe("Multiple Component Cleanup Behavior", () => {
+    test("cleanup is NOT called when 2 getter hook components mount and 1 unmounts", () => {
+      const cleanupSpy = vi.fn();
+      const subscribeSpy = vi.fn(() => cleanupSpy);
+
+      const [useCounter] = createGlobalState({
+        initialState: () => 0,
+        onSubscribe: subscribeSpy,
+      });
+
+      const TestComponent = ({ id }: { id: string }) => {
+        const counter = useCounter();
+        return <div data-testid={`counter-${id}`}>{counter}</div>;
+      };
+
+      const ParentComponent = () => {
+        const [showFirst, setShowFirst] = useState(true);
+        const [showSecond, setShowSecond] = useState(true);
+        return (
+          <div>
+            <button
+              data-testid="toggle-first"
+              onClick={() => setShowFirst(!showFirst)}
+            >
+              Toggle First Component
+            </button>
+            <button
+              data-testid="toggle-second"
+              onClick={() => setShowSecond(!showSecond)}
+            >
+              Toggle Second Component
+            </button>
+            {showFirst && <TestComponent id="first" />}
+            {showSecond && <TestComponent id="second" />}
+          </div>
+        );
+      };
+
+      const { container } = render(
+        <GlobalStateProvider initialValues={{}}>
+          <ParentComponent />
+        </GlobalStateProvider>,
+      );
+
+      // Both components should be mounted
+      expect(
+        container.querySelector('[data-testid="counter-first"]'),
+      ).toHaveTextContent("0");
+      expect(
+        container.querySelector('[data-testid="counter-second"]'),
+      ).toHaveTextContent("0");
+      expect(subscribeSpy).toHaveBeenCalledTimes(1);
+
+      // Unmount first component
+      act(() => {
+        fireEvent.click(
+          container.querySelector('[data-testid="toggle-first"]')!,
+        );
+      });
+
+      // First component should be unmounted, second should still be mounted
+      expect(
+        container.querySelector('[data-testid="counter-first"]'),
+      ).toBeNull();
+      expect(
+        container.querySelector('[data-testid="counter-second"]'),
+      ).toHaveTextContent("0");
+
+      // Cleanup should NOT have been called because second component is still mounted
+      expect(cleanupSpy).not.toHaveBeenCalled();
+
+      // Unmount second component
+      act(() => {
+        fireEvent.click(
+          container.querySelector('[data-testid="toggle-second"]')!,
+        );
+      });
+
+      // Both components should be unmounted
+      expect(
+        container.querySelector('[data-testid="counter-first"]'),
+      ).toBeNull();
+      expect(
+        container.querySelector('[data-testid="counter-second"]'),
+      ).toBeNull();
+
+      // NOW cleanup should be called since all components are unmounted
+      expect(cleanupSpy).toHaveBeenCalledOnce();
+    });
+
+    test("cleanup is NOT called when 2 setter hook components mount and 1 unmounts", () => {
+      const cleanupSpy = vi.fn();
+      const subscribeSpy = vi.fn(() => cleanupSpy);
+
+      const [, useSetCounter] = createGlobalState({
+        initialState: () => 0,
+        onSubscribe: subscribeSpy,
+      });
+
+      const SetterComponent = ({ id }: { id: string }) => {
+        const setCounter = useSetCounter();
+        return (
+          <button
+            data-testid={`setter-${id}`}
+            onClick={() => setCounter((prev) => prev + 1)}
+          >
+            Increment {id}
+          </button>
+        );
+      };
+
+      const ParentComponent = () => {
+        const [showFirst, setShowFirst] = useState(true);
+        const [showSecond, setShowSecond] = useState(true);
+        return (
+          <div>
+            <button
+              data-testid="toggle-first"
+              onClick={() => setShowFirst(!showFirst)}
+            >
+              Toggle First Setter
+            </button>
+            <button
+              data-testid="toggle-second"
+              onClick={() => setShowSecond(!showSecond)}
+            >
+              Toggle Second Setter
+            </button>
+            {showFirst && <SetterComponent id="first" />}
+            {showSecond && <SetterComponent id="second" />}
+          </div>
+        );
+      };
+
+      const { container } = render(
+        <GlobalStateProvider initialValues={{}}>
+          <ParentComponent />
+        </GlobalStateProvider>,
+      );
+
+      // Both setter components should be mounted
+      expect(
+        container.querySelector('[data-testid="setter-first"]'),
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-testid="setter-second"]'),
+      ).toBeInTheDocument();
+      expect(subscribeSpy).toHaveBeenCalledTimes(1);
+
+      // Unmount first setter component
+      act(() => {
+        fireEvent.click(
+          container.querySelector('[data-testid="toggle-first"]')!,
+        );
+      });
+
+      // First setter should be unmounted, second should still be mounted
+      expect(
+        container.querySelector('[data-testid="setter-first"]'),
+      ).toBeNull();
+      expect(
+        container.querySelector('[data-testid="setter-second"]'),
+      ).toBeInTheDocument();
+
+      // Cleanup should NOT have been called because second setter is still mounted
+      expect(cleanupSpy).not.toHaveBeenCalled();
+
+      // Unmount second setter component
+      act(() => {
+        fireEvent.click(
+          container.querySelector('[data-testid="toggle-second"]')!,
+        );
+      });
+
+      // Both setters should be unmounted
+      expect(
+        container.querySelector('[data-testid="setter-first"]'),
+      ).toBeNull();
+      expect(
+        container.querySelector('[data-testid="setter-second"]'),
+      ).toBeNull();
+
+      // NOW cleanup should be called since all components are unmounted
+      expect(cleanupSpy).toHaveBeenCalledOnce();
+    });
+  });
+
   describe("Setters work correctly across components", () => {
     test("Reuse existing initialized context in freshly mounted new component", async () => {
       const [useTheme, useSetTheme] = createGlobalState({

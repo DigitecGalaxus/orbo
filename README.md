@@ -1,6 +1,6 @@
 # Orbo
 
-[![npm version](https://img.shields.io/npm/v/orbo)](https://www.npmjs.com/package/orbo)
+[![npm version](https://img.shields.io/npm/v/orbo)](https://www.npmjs.com/package/orbo) [![bundle size](https://img.shields.io/bundlephobia/minzip/orbo)](https://bundlephobia.com/result?p=orbo)
 
 ![Orbo](https://raw.githubusercontent.com/DigitecGalaxus/orbo/refs/heads/main/logo.jpg)
 

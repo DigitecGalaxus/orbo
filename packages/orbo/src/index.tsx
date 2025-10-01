@@ -1,5 +1,6 @@
 import {
   createContext,
+  createElement,
   use,
   useCallback,
   useEffect,
@@ -54,28 +55,41 @@ interface GlobalStateConfig<T = unknown> {
   persistState?: boolean;
 }
 
+// \!/ All props with a leading underscore are internal and must not be used outside of Orbo \!/
+// In the production build these props are renamed to single-letter names for minimal bundle size
+// e.g. _initialValues -> a, _subContexts -> b, _isHydrated -> c, etc.
+
 interface GlobalStateContextData {
-  initialValues: GlobalStateInitialValues;
+  _initialValues: GlobalStateInitialValues;
   /** Internal state management */
-  subContexts: Map<GlobalStateConfig<any>, SubContext<any>>;
+  _subContexts: Map<GlobalStateConfig<any>, SubContext<any>>;
   /** Flag that is true after the first client-side render */
-  isHydrated: boolean;
+  _isHydrated: boolean;
 }
 
-// Internal statement API of Orbo
+/** Internal statement API of Orbo */
 interface SubContext<T> {
-  value: T;
-  initialized: boolean;
-  listeners: Set<(newState: T) => void>;
-  subscribe: (setter: (prev: T) => void) => () => void;
-  updateState: (newState: T | ((prev: T) => T)) => void;
-  cleanup: void | undefined | (() => void);
-  triggerOnSubscribe: () => void;
+  /** Current state value */
+  _value: T;
+  /** Keep track if onSubscribe has been called already */
+  _initialized: boolean;
+  /**
+   * Use a Set to store unique listener references
+   * Set automatically prevents duplicate function references
+   */
+  _listeners: Set<(newState: T) => void>;
+  _subscribe: (setter: (prev: T) => void) => () => void;
+  _updateState: (newState: T | ((prev: T) => T)) => void;
+  /** Cleanup function returned by onSubscribe */
+  _cleanup: null | void | undefined | (() => void);
+  /**
+   * Internal helper to call onSubscribe once the first component subscribes
+   * it is safe to call this multiple times as it checks the _initialized flag
+   */
+  _triggerOnSubscribe: () => void;
 }
 
-const GlobalStateContext = createContext<GlobalStateContextData | undefined>(
-  undefined,
-);
+const GlobalStateContext = createContext<GlobalStateContextData | null>(null);
 
 /**
  * Root provider that enables global state management for child components.
@@ -94,36 +108,32 @@ const GlobalStateContext = createContext<GlobalStateContextData | undefined>(
  * }
  * ```
  */
-export function GlobalStateProvider({
+export const GlobalStateProvider = ({
   initialValues,
-  children,
+  ...props
 }: {
   initialValues: GlobalStateInitialValues;
   children: React.ReactNode;
-}) {
+}) => {
   const contextData = useRef<GlobalStateContextData>({
-    initialValues,
-    subContexts: new Map(),
-    isHydrated: false,
+    _initialValues: initialValues,
+    _subContexts: new Map(),
+    _isHydrated: false,
   }).current;
+
   useEffect(() => {
     // Mark as hydrated after the first client-side render
     // to distinguish global state initializations during hydration
     // from later state initializations caused by user interactions
-    contextData.isHydrated = true;
+    contextData._isHydrated = true;
     // Trigger onSubscribe now that hydration is done
-    contextData.subContexts.forEach((subContext) => {
-      if (subContext.listeners.size > 0) {
-        subContext.triggerOnSubscribe();
-      }
-    });
+    contextData._subContexts.forEach((subContext) =>
+      subContext._triggerOnSubscribe(),
+    );
   }, []);
-  return (
-    <GlobalStateContext.Provider value={contextData}>
-      {children}
-    </GlobalStateContext.Provider>
-  );
-}
+
+  return createElement(GlobalStateContext, { ...props, value: contextData });
+};
 
 /**
  * Creates a pair of hooks for managing global state that is shared across components.
@@ -151,124 +161,114 @@ export function GlobalStateProvider({
  * - 🏝️ **Context isolated** - each `GlobalStateProvider` maintains separate state instances
  * - 🎯 **Clear separation** - `persistState` for memory, `onSubscribe` for external resources
  */
-export function createGlobalState<T>(config: GlobalStateConfig<T>) {
-  // Create a unique key for this global state instance
-  const stateKey = config;
+export const createGlobalState = <T,>(config: GlobalStateConfig<T>) => {
   // Only call onSubscribe on client-side (not during SSR)
-  const onSubscribe =
-    (typeof window !== "undefined" && config.onSubscribe) || (() => {});
+  const onSubscribe = config.onSubscribe;
   // Create a new subcontext
-  function initializeSubContext(
+  const initializeSubContext = (
     globalStateContext: GlobalStateContextData,
-  ): SubContext<T> {
-    let subContext = globalStateContext.subContexts.get(stateKey);
-    if (!subContext) {
-      const listeners = new Set<(newState: any) => any>();
-      const newSubContext: SubContext<T> = {
+  ): SubContext<T> => {
+    const subContextFromCache = globalStateContext._subContexts.get(config);
+    const listeners: Set<(newState: any) => any> = new Set();
+    const subContext =
+      subContextFromCache ||
+      ({
         // Helper flag which is set to false after the last subscriber unmounts
         // (needed for persistState: true)
-        initialized: false,
+        _initialized: false,
         // Calculating the initial state on sub context creation (SSR & client)
-        value: config.initialState(
-          globalStateContext.initialValues,
-          globalStateContext.isHydrated,
+        _value: config.initialState(
+          globalStateContext._initialValues,
+          globalStateContext._isHydrated,
         ),
         // Update state has the same shape like React's setState
         // and can be called in onSubscribe or by the global state setter hook
-        updateState: (newState: T | ((prev: T) => T)) => {
-          newSubContext.value =
+        _updateState: (newState: T | ((prev: T) => T)) => {
+          subContext._value =
             typeof newState === "function"
-              ? (newState as (prev: T) => T)(newSubContext.value)
+              ? (newState as (prev: T) => T)(subContext._value)
               : newState;
-          listeners.forEach((setter) => setter(newSubContext.value));
+          listeners.forEach((setter) => setter(subContext._value));
         },
         // The cleanup function is the return value of onSubscribe
-        cleanup: undefined,
+        _cleanup: null,
         // Internal helper to fire onSubscribe once the first component subscribes
-        triggerOnSubscribe: () => {
+        _triggerOnSubscribe: () => {
           // Call it directly if the page is already hydrated otherwise
           // wait for it to be called from useEffect in GlobalStateProvider
-          if (globalStateContext.isHydrated && !newSubContext.initialized) {
-            newSubContext.cleanup = onSubscribe(
-              newSubContext.updateState,
-              newSubContext.value,
+          if (globalStateContext._isHydrated && !subContext._initialized) {
+            subContext._cleanup = onSubscribe?.(
+              subContext._updateState,
+              subContext._value,
             );
-            newSubContext.initialized = true;
+            subContext._initialized = true;
           }
         },
         // Listeners from all components watching the state value of this subcontext
-        listeners,
+        _listeners: listeners,
         // The internal subscribe function for the orbo hooks factory
-        subscribe: (setter: (newState: any) => void) => {
+        _subscribe: (setter: (newState: any) => void) => {
           listeners.add(setter);
           return () => {
             listeners.delete(setter);
-            if (listeners.size === 0) {
+            // Cleanup after the last listener unsubscribes
+            if (!listeners.size) {
               // Ensure re-initialization on next subscribe
-              newSubContext.initialized = false;
+              subContext._initialized = false;
               if (config.persistState === false) {
-                globalStateContext.subContexts.delete(stateKey);
+                globalStateContext._subContexts.delete(config);
               }
-              // Always call cleanup when last subscriber unmounts
-              newSubContext.cleanup?.();
+              subContext._cleanup?.();
             }
           };
         },
-      };
-      // Call onSubscribe when the subcontext is created
-      // This must happen after newSubContext is fully initialized as it allows
-      // calling updateState in onSubscribe
-      newSubContext.triggerOnSubscribe();
-      // Attach the subcontext to the GlobalState provider to ensure separate instances
-      // for multiple SSR Requests
-      globalStateContext.subContexts.set(
-        stateKey,
-        newSubContext as SubContext<any>,
-      );
-      return newSubContext;
-    }
-    // Re-initialize once the first component subscribes again
-    // This is necessary if persistState is true and the last component unsubscribed
-    // as no new subcontext will be created but onSubscribe must be called again
-    subContext.triggerOnSubscribe();
+      } satisfies SubContext<T>);
 
-    return subContext;
-  }
+    // Attach the subcontext to the GlobalState provider to ensure separate instances
+    // for multiple SSR Requests
+    if (!subContextFromCache) {
+      globalStateContext._subContexts.set(
+        config,
+        subContext as SubContext<any>,
+      );
+    }
+
+    // (Re-)initialize once the first component subscribes
+    subContext._triggerOnSubscribe();
+    return subContext as SubContext<T>;
+  };
   return [
     // Read from global state
-    function useGlobalState(): T {
+    (): T => {
       const globalStateContext = use(GlobalStateContext)!;
       // Initialize state only once
       const [state, setState] = useState<T>(
-        () => initializeSubContext(globalStateContext).value,
+        () => initializeSubContext(globalStateContext)._value,
       );
       // Rerender if the global state changes
       useEffect(
-        () => initializeSubContext(globalStateContext).subscribe(setState),
-        [globalStateContext],
+        () => initializeSubContext(globalStateContext)._subscribe(setState),
+        [],
       );
       return state;
     },
     // Write to global state
-    function useSetGlobalState(): (newState: T | ((prev: T) => T)) => void {
+    (): ((newState: T | ((prev: T) => T)) => void) => {
       const globalStateContext = use(GlobalStateContext)!;
       // This effect prevents a cleanup as long as at least one setter is mounted
       useEffect(
         () =>
-          initializeSubContext(globalStateContext).subscribe(() => {
+          initializeSubContext(globalStateContext)._subscribe(() => {
             /* no rerender for the setter */
           }),
-        [globalStateContext],
+        [],
       );
-      return useCallback(
-        (newState: T | ((prev: T) => T)) => {
-          initializeSubContext(globalStateContext).updateState(newState);
-        },
-        [globalStateContext],
-      );
+      return useCallback((newState: T | ((prev: T) => T)) => {
+        initializeSubContext(globalStateContext)._updateState(newState);
+      }, []);
     },
   ] as const;
-}
+};
 
 const globalStateMemoCache = new WeakMap<
   Function,

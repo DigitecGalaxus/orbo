@@ -19,7 +19,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "development": "./dist/index.development.js",
+      "default": "./dist/index.js"
     }
   },
   "files": [
@@ -29,8 +30,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsdown --clean",
-    "dev": "tsdown --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "test": "vitest",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -53,14 +54,14 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.1.0",
+    "@types/node": "24.3.3",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.2",
-    "@types/node": "24.3.3",
     "happy-dom": "^18.0.1",
     "prettier": "^3.6.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "tsdown": "^0.9.0",
+    "tsup": "^8.5.0",
     "typescript": "^5.9.2",
     "vitest": "^3.0.0"
   },

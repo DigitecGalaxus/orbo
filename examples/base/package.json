@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "rspack serve",
-    "build": "rspack build"
+    "build": "rspack build --mode production"
   },
   "dependencies": {
     "orbo": "workspace:*",
