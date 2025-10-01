@@ -1103,11 +1103,15 @@ describe("Orbo - createGlobalState", () => {
 
       // Unmount first component
       act(() => {
-        fireEvent.click(container.querySelector('[data-testid="toggle-first"]')!);
+        fireEvent.click(
+          container.querySelector('[data-testid="toggle-first"]')!,
+        );
       });
 
       // First component should be unmounted, second should still be mounted
-      expect(container.querySelector('[data-testid="counter-first"]')).toBeNull();
+      expect(
+        container.querySelector('[data-testid="counter-first"]'),
+      ).toBeNull();
       expect(
         container.querySelector('[data-testid="counter-second"]'),
       ).toHaveTextContent("0");
@@ -1117,12 +1121,18 @@ describe("Orbo - createGlobalState", () => {
 
       // Unmount second component
       act(() => {
-        fireEvent.click(container.querySelector('[data-testid="toggle-second"]')!);
+        fireEvent.click(
+          container.querySelector('[data-testid="toggle-second"]')!,
+        );
       });
 
       // Both components should be unmounted
-      expect(container.querySelector('[data-testid="counter-first"]')).toBeNull();
-      expect(container.querySelector('[data-testid="counter-second"]')).toBeNull();
+      expect(
+        container.querySelector('[data-testid="counter-first"]'),
+      ).toBeNull();
+      expect(
+        container.querySelector('[data-testid="counter-second"]'),
+      ).toBeNull();
 
       // NOW cleanup should be called since all components are unmounted
       expect(cleanupSpy).toHaveBeenCalledOnce();
@@ -1179,30 +1189,46 @@ describe("Orbo - createGlobalState", () => {
       );
 
       // Both setter components should be mounted
-      expect(container.querySelector('[data-testid="setter-first"]')).toBeInTheDocument();
-      expect(container.querySelector('[data-testid="setter-second"]')).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-testid="setter-first"]'),
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-testid="setter-second"]'),
+      ).toBeInTheDocument();
       expect(subscribeSpy).toHaveBeenCalledTimes(1);
 
       // Unmount first setter component
       act(() => {
-        fireEvent.click(container.querySelector('[data-testid="toggle-first"]')!);
+        fireEvent.click(
+          container.querySelector('[data-testid="toggle-first"]')!,
+        );
       });
 
       // First setter should be unmounted, second should still be mounted
-      expect(container.querySelector('[data-testid="setter-first"]')).toBeNull();
-      expect(container.querySelector('[data-testid="setter-second"]')).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-testid="setter-first"]'),
+      ).toBeNull();
+      expect(
+        container.querySelector('[data-testid="setter-second"]'),
+      ).toBeInTheDocument();
 
       // Cleanup should NOT have been called because second setter is still mounted
       expect(cleanupSpy).not.toHaveBeenCalled();
 
       // Unmount second setter component
       act(() => {
-        fireEvent.click(container.querySelector('[data-testid="toggle-second"]')!);
+        fireEvent.click(
+          container.querySelector('[data-testid="toggle-second"]')!,
+        );
       });
 
       // Both setters should be unmounted
-      expect(container.querySelector('[data-testid="setter-first"]')).toBeNull();
-      expect(container.querySelector('[data-testid="setter-second"]')).toBeNull();
+      expect(
+        container.querySelector('[data-testid="setter-first"]'),
+      ).toBeNull();
+      expect(
+        container.querySelector('[data-testid="setter-second"]'),
+      ).toBeNull();
 
       // NOW cleanup should be called since all components are unmounted
       expect(cleanupSpy).toHaveBeenCalledOnce();
