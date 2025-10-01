@@ -1,5 +1,11 @@
 # orbo
 
+## 3.4.0
+
+### Minor Changes
+
+- e053931: Optimize production build size
+
 ## 3.3.0
 
 ### Minor Changes
