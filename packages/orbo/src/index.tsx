@@ -74,11 +74,10 @@ interface SubContext<T> {
   /** Keep track if onSubscribe has been called already */
   _initialized: boolean;
   /**
-   * Use an array instead of Set to keep the correct count of listeners
-   * even if two listeners are the same function reference
-   * Otherwise unsubscribing one would remove both
+   * Use a Set to store unique listener references
+   * Set automatically prevents duplicate function references
    */
-  _listeners: Array<(newState: T) => void>;
+  _listeners: Set<(newState: T) => void>;
   _subscribe: (setter: (prev: T) => void) => () => void;
   _updateState: (newState: T | ((prev: T) => T)) => void;
   /** Cleanup function returned by onSubscribe */
@@ -170,7 +169,7 @@ export const createGlobalState = <T,>(config: GlobalStateConfig<T>) => {
     globalStateContext: GlobalStateContextData,
   ): SubContext<T> => {
     const subContextFromCache = globalStateContext._subContexts.get(config);
-    const listeners: Array<(newState: any) => any> = [];
+    const listeners: Set<(newState: any) => any> = new Set();
     const subContext =
       subContextFromCache ||
       ({
@@ -209,16 +208,16 @@ export const createGlobalState = <T,>(config: GlobalStateConfig<T>) => {
         _listeners: listeners,
         // The internal subscribe function for the orbo hooks factory
         _subscribe: (setter: (newState: any) => void) => {
-          listeners.push(setter);
+          listeners.add(setter);
           return () => {
-            listeners.splice(listeners.indexOf(setter), 1);
-            if (listeners.length === 0) {
+            listeners.delete(setter);
+            // Cleanup after the last listener unsubscribes
+            if (!listeners.size) {
               // Ensure re-initialization on next subscribe
               subContext._initialized = false;
               if (config.persistState === false) {
                 globalStateContext._subContexts.delete(config);
               }
-              // Always call cleanup when last subscriber unmounts
               subContext._cleanup?.();
             }
           };
