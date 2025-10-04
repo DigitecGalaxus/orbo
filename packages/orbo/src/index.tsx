@@ -11,6 +11,13 @@ import {
   useState,
 } from "react";
 
+/** 
+ * Maximum supported depth for Suspense boundaries as in <Suspense><Suspense><Suspense>...
+ * Components nested by more than this number of Suspense boundaries
+ * might run into hydration errors "Warning: Expected server HTML to contain a matching <div> in <div>"
+ */
+const MAX_SUPPORTED_SUSPENSE_DEPTH = 30;
+
 /**
  * Base interface for initial values passed to `GlobalStateProvider`.
  *
@@ -96,7 +103,7 @@ const GlobalStateContext = createContext<GlobalStateContextData | null>(null);
 
 /**
  * Internal component that triggers onSubscribe after all Suspense boundaries have hydrated.
- * By nesting this component 30 levels deep in Suspense boundaries, it hydrates last,
+ * By nesting this component XX levels deep in Suspense boundaries, it hydrates last,
  * ensuring all user components (even those in nested Suspense) have completed hydration.
  */
 const HydrationCheck = () => {
@@ -152,12 +159,21 @@ export const GlobalStateProvider = ({
     children: createElement(Fragment, {
       children: [
         createElement(Fragment, { key: "app-content", children }),
-        // Nest HydrationCheck in 30 Suspense boundaries to ensure it hydrates
+        // Nest HydrationCheck in MAX_SUPPORTED_SUSPENSE_DEPTH Suspense boundaries to ensure it hydrates
         // after all user Suspense boundaries (even deeply nested ones)
+        //
+        // This works around a React limitation of https://react.dev/reference/react/useSyncExternalStore
+        // > React will call getSnapshot a second time just before applying changes to the DOM. 
+        // > If it returns a different value than when it was called originally, React will restart the update from scratch, 
+        // > this time applying it as a blocking update, to ensure that every component on screen is reflecting the same 
+        // > version of the store
+        //
+        // While this is a understandable behavior it breaks all suspense boundaries during hydration and forces them to
+        // show their fallback instead until the entire tree is hydrated and their lazy components loaded
         createElement(
           Fragment,
           { key: "hydration-check" },
-          Array.from({ length: 30 }).reduce<React.ReactElement>(
+          Array.from({ length: MAX_SUPPORTED_SUSPENSE_DEPTH }).reduce<React.ReactElement>(
             (child) =>
               createElement(Suspense, { fallback: null, children: child }),
             createElement(HydrationCheck),
