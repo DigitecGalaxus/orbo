@@ -1046,6 +1046,76 @@ describe("Orbo - createGlobalState", () => {
         "child-useEffect -> onSubscribe",
       );
     });
+
+    test("BUG: onSubscribe fires during partial hydration with Suspense", async () => {
+      const executionOrder: string[] = [];
+
+      const [useTestState] = createGlobalState({
+        initialState: () => "initial",
+        onSubscribe: () => {
+          executionOrder.push("onSubscribe");
+          return () => {};
+        },
+      });
+
+      const SuspendedChild = () => {
+        executionOrder.push("SuspendedChild-render");
+        const state = useTestState();
+
+        React.useEffect(() => {
+          executionOrder.push("SuspendedChild-effect");
+        }, []);
+
+        return <div data-testid="suspended">{state}</div>;
+      };
+
+      const App = () => {
+        executionOrder.push("App-render");
+
+        React.useEffect(() => {
+          executionOrder.push("App-effect");
+        }, []);
+
+        return (
+          <React.Suspense fallback={<div>Loading...</div>}>
+            <SuspendedChild />
+          </React.Suspense>
+        );
+      };
+
+      const { cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <App />
+        </GlobalStateProvider>,
+        () => {
+          // Reset execution tracking after SSR
+          executionOrder.length = 0;
+        },
+      );
+      cleanupFunctions.push(cleanup);
+
+      await waitFor(() => {
+        expect(executionOrder).toContain("SuspendedChild-effect");
+      });
+
+      // BUG: With Suspense, the execution order shows partial hydration:
+      // 1. App-render -> App-effect (GlobalStateProvider sets _isHydrated = true)
+      // 2. SuspendedChild-render (component inside Suspense hydrates and subscribes)
+      // 3. onSubscribe fires (BUG! It fires during hydration)
+      // 4. SuspendedChild-effect (hydration completes)
+      const onSubscribeIndex = executionOrder.indexOf("onSubscribe");
+      const suspendedChildEffectIndex = executionOrder.indexOf(
+        "SuspendedChild-effect",
+      );
+      const appEffectIndex = executionOrder.indexOf("App-effect");
+
+      // The bug: onSubscribe fires after App-effect but before SuspendedChild-effect
+      expect(onSubscribeIndex).toBeGreaterThan(appEffectIndex);
+      expect(onSubscribeIndex).toBeLessThan(suspendedChildEffectIndex);
+
+      // What we want: onSubscribe should fire AFTER SuspendedChild-effect
+      // expect(onSubscribeIndex).toBeGreaterThan(suspendedChildEffectIndex);
+    });
   });
 
   describe("Multiple Component Cleanup Behavior", () => {
