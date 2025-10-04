@@ -1047,7 +1047,7 @@ describe("Orbo - createGlobalState", () => {
       );
     });
 
-    test("BUG: onSubscribe fires during partial hydration with Suspense", async () => {
+    test("onSubscribe fires AFTER partial hydration with Suspense completes", async () => {
       const executionOrder: string[] = [];
 
       const [useTestState] = createGlobalState({
@@ -1095,26 +1095,103 @@ describe("Orbo - createGlobalState", () => {
       cleanupFunctions.push(cleanup);
 
       await waitFor(() => {
-        expect(executionOrder).toContain("SuspendedChild-effect");
+        expect(executionOrder).toContain("onSubscribe");
       });
 
-      // BUG: With Suspense, the execution order shows partial hydration:
-      // 1. App-render -> App-effect (GlobalStateProvider sets _isHydrated = true)
-      // 2. SuspendedChild-render (component inside Suspense hydrates and subscribes)
-      // 3. onSubscribe fires (BUG! It fires during hydration)
-      // 4. SuspendedChild-effect (hydration completes)
+      // FIXED: With HydrationCheck component, the execution order is correct:
+      // 1. App-render -> App-effect
+      // 2. SuspendedChild-render -> SuspendedChild-effect (Suspense boundary hydrates)
+      // 3. HydrationCheck effect runs (hydrates last) -> onSubscribe fires
       const onSubscribeIndex = executionOrder.indexOf("onSubscribe");
       const suspendedChildEffectIndex = executionOrder.indexOf(
         "SuspendedChild-effect",
       );
       const appEffectIndex = executionOrder.indexOf("App-effect");
 
-      // The bug: onSubscribe fires after App-effect but before SuspendedChild-effect
+      // Verify correct order: onSubscribe fires AFTER all child effects complete
       expect(onSubscribeIndex).toBeGreaterThan(appEffectIndex);
-      expect(onSubscribeIndex).toBeLessThan(suspendedChildEffectIndex);
+      expect(onSubscribeIndex).toBeGreaterThan(suspendedChildEffectIndex);
+    });
 
-      // What we want: onSubscribe should fire AFTER SuspendedChild-effect
-      // expect(onSubscribeIndex).toBeGreaterThan(suspendedChildEffectIndex);
+    test("onSubscribe fires AFTER multiple Suspense boundaries complete", async () => {
+      const executionOrder: string[] = [];
+
+      const [useTestState] = createGlobalState({
+        initialState: () => "initial",
+        onSubscribe: () => {
+          executionOrder.push("onSubscribe");
+          return () => {};
+        },
+      });
+
+      const SuspendedChild1 = () => {
+        executionOrder.push("SuspendedChild1-render");
+        const state = useTestState();
+
+        React.useEffect(() => {
+          executionOrder.push("SuspendedChild1-effect");
+        }, []);
+
+        return <div data-testid="suspended1">{state}</div>;
+      };
+
+      const SuspendedChild2 = () => {
+        executionOrder.push("SuspendedChild2-render");
+        const state = useTestState();
+
+        React.useEffect(() => {
+          executionOrder.push("SuspendedChild2-effect");
+        }, []);
+
+        return <div data-testid="suspended2">{state}</div>;
+      };
+
+      const App = () => {
+        executionOrder.push("App-render");
+
+        React.useEffect(() => {
+          executionOrder.push("App-effect");
+        }, []);
+
+        return (
+          <React.Suspense fallback={<div>Loading outer...</div>}>
+            <React.Suspense fallback={<div>Loading 1...</div>}>
+              <SuspendedChild1 />
+            </React.Suspense>
+            <React.Suspense fallback={<div>Loading 2...</div>}>
+              <SuspendedChild2 />
+            </React.Suspense>
+          </React.Suspense>
+        );
+      };
+
+      const { cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <App />
+        </GlobalStateProvider>,
+        () => {
+          // Reset execution tracking after SSR
+          executionOrder.length = 0;
+        },
+      );
+      cleanupFunctions.push(cleanup);
+
+      await waitFor(() => {
+        expect(executionOrder).toContain("onSubscribe");
+      });
+
+      // Verify onSubscribe fires after BOTH Suspense boundaries have hydrated
+      const onSubscribeIndex = executionOrder.indexOf("onSubscribe");
+      const suspendedChild1EffectIndex = executionOrder.indexOf(
+        "SuspendedChild1-effect",
+      );
+      const suspendedChild2EffectIndex = executionOrder.indexOf(
+        "SuspendedChild2-effect",
+      );
+
+      // onSubscribe should fire AFTER both children complete
+      expect(onSubscribeIndex).toBeGreaterThan(suspendedChild1EffectIndex);
+      expect(onSubscribeIndex).toBeGreaterThan(suspendedChild2EffectIndex);
     });
   });
 

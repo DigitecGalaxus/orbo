@@ -1,6 +1,9 @@
 import {
   createContext,
   createElement,
+  Fragment,
+  startTransition,
+  Suspense,
   use,
   useCallback,
   useEffect,
@@ -92,6 +95,29 @@ interface SubContext<T> {
 const GlobalStateContext = createContext<GlobalStateContextData | null>(null);
 
 /**
+ * Internal component that triggers onSubscribe after all Suspense boundaries have hydrated.
+ * By nesting this component 30 levels deep in Suspense boundaries, it hydrates last,
+ * ensuring all user components (even those in nested Suspense) have completed hydration.
+ */
+const HydrationCheck = () => {
+  const contextData = use(GlobalStateContext)!;
+
+  useEffect(() => {
+    // Use startTransition to mark this as a non-urgent update
+    startTransition(() => {
+      // Mark as hydrated after all components (including Suspense boundaries) have rendered
+      contextData._isHydrated = true;
+      // Trigger onSubscribe now that hydration is complete
+      contextData._subContexts.forEach((subContext) =>
+        subContext._triggerOnSubscribe(),
+      );
+    });
+  }, []);
+
+  return null;
+};
+
+/**
  * Root provider that enables global state management for child components.
  *
  * @param initialValues Initial values passed to `initialState` functions
@@ -110,7 +136,7 @@ const GlobalStateContext = createContext<GlobalStateContextData | null>(null);
  */
 export const GlobalStateProvider = ({
   initialValues,
-  ...props
+  children,
 }: {
   initialValues: GlobalStateInitialValues;
   children: React.ReactNode;
@@ -121,18 +147,25 @@ export const GlobalStateProvider = ({
     _isHydrated: false,
   }).current;
 
-  useEffect(() => {
-    // Mark as hydrated after the first client-side render
-    // to distinguish global state initializations during hydration
-    // from later state initializations caused by user interactions
-    contextData._isHydrated = true;
-    // Trigger onSubscribe now that hydration is done
-    contextData._subContexts.forEach((subContext) =>
-      subContext._triggerOnSubscribe(),
-    );
-  }, []);
-
-  return createElement(GlobalStateContext, { ...props, value: contextData });
+  return createElement(GlobalStateContext, {
+    value: contextData,
+    children: createElement(Fragment, {
+      children: [
+        createElement(Fragment, { key: "app-content", children }),
+        // Nest HydrationCheck in 30 Suspense boundaries to ensure it hydrates
+        // after all user Suspense boundaries (even deeply nested ones)
+        createElement(
+          Fragment,
+          { key: "hydration-check" },
+          Array.from({ length: 30 }).reduce<React.ReactElement>(
+            (child) =>
+              createElement(Suspense, { fallback: null, children: child }),
+            createElement(HydrationCheck),
+          ),
+        ),
+      ],
+    }),
+  });
 };
 
 /**
