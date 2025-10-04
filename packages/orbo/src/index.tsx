@@ -1,12 +1,22 @@
 import {
   createContext,
   createElement,
+  Fragment,
+  startTransition,
+  Suspense,
   use,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+
+/**
+ * Maximum supported depth for Suspense boundaries as in <Suspense><Suspense><Suspense>...
+ * Components nested by more than this number of Suspense boundaries
+ * might run into hydration errors "Warning: Expected server HTML to contain a matching <div> in <div>"
+ */
+const MAX_SUPPORTED_SUSPENSE_DEPTH = 30;
 
 /**
  * Base interface for initial values passed to `GlobalStateProvider`.
@@ -92,6 +102,29 @@ interface SubContext<T> {
 const GlobalStateContext = createContext<GlobalStateContextData | null>(null);
 
 /**
+ * Internal component that triggers onSubscribe after all Suspense boundaries have hydrated.
+ * By nesting this component XX levels deep in Suspense boundaries, it hydrates last,
+ * ensuring all user components (even those in nested Suspense) have completed hydration.
+ */
+const HydrationCheck = () => {
+  const contextData = use(GlobalStateContext)!;
+
+  useEffect(() => {
+    // Use startTransition to mark this as a non-urgent update
+    startTransition(() => {
+      // Mark as hydrated after all components (including Suspense boundaries) have rendered
+      contextData._isHydrated = true;
+      // Trigger onSubscribe now that hydration is complete
+      contextData._subContexts.forEach((subContext) =>
+        subContext._triggerOnSubscribe(),
+      );
+    });
+  }, []);
+
+  return null;
+};
+
+/**
  * Root provider that enables global state management for child components.
  *
  * @param initialValues Initial values passed to `initialState` functions
@@ -110,7 +143,7 @@ const GlobalStateContext = createContext<GlobalStateContextData | null>(null);
  */
 export const GlobalStateProvider = ({
   initialValues,
-  ...props
+  children,
 }: {
   initialValues: GlobalStateInitialValues;
   children: React.ReactNode;
@@ -121,18 +154,36 @@ export const GlobalStateProvider = ({
     _isHydrated: false,
   }).current;
 
-  useEffect(() => {
-    // Mark as hydrated after the first client-side render
-    // to distinguish global state initializations during hydration
-    // from later state initializations caused by user interactions
-    contextData._isHydrated = true;
-    // Trigger onSubscribe now that hydration is done
-    contextData._subContexts.forEach((subContext) =>
-      subContext._triggerOnSubscribe(),
-    );
-  }, []);
-
-  return createElement(GlobalStateContext, { ...props, value: contextData });
+  return createElement(GlobalStateContext, {
+    value: contextData,
+    children: createElement(Fragment, {
+      children: [
+        createElement(Fragment, { key: "app-content", children }),
+        // Nest HydrationCheck in MAX_SUPPORTED_SUSPENSE_DEPTH Suspense boundaries to ensure it hydrates
+        // after all user Suspense boundaries (even deeply nested ones)
+        //
+        // This works around a React limitation of https://react.dev/reference/react/useSyncExternalStore
+        // > React will call getSnapshot a second time just before applying changes to the DOM.
+        // > If it returns a different value than when it was called originally, React will restart the update from scratch,
+        // > this time applying it as a blocking update, to ensure that every component on screen is reflecting the same
+        // > version of the store
+        //
+        // While this is a understandable behavior of useSyncExternalStore boundary we don't want that for Orbo as it forces all
+        // inflight suspense boundaries during hydration to show their fallback instead causeing layout shifts and flashings
+        createElement(
+          Fragment,
+          { key: "hydration-check" },
+          Array.from({
+            length: MAX_SUPPORTED_SUSPENSE_DEPTH,
+          }).reduce<React.ReactElement>(
+            (child) =>
+              createElement(Suspense, { fallback: null, children: child }),
+            createElement(HydrationCheck),
+          ),
+        ),
+      ],
+    }),
+  });
 };
 
 /**

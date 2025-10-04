@@ -1046,6 +1046,153 @@ describe("Orbo - createGlobalState", () => {
         "child-useEffect -> onSubscribe",
       );
     });
+
+    test("onSubscribe fires AFTER partial hydration with Suspense completes", async () => {
+      const executionOrder: string[] = [];
+
+      const [useTestState] = createGlobalState({
+        initialState: () => "initial",
+        onSubscribe: () => {
+          executionOrder.push("onSubscribe");
+          return () => {};
+        },
+      });
+
+      const SuspendedChild = () => {
+        executionOrder.push("SuspendedChild-render");
+        const state = useTestState();
+
+        React.useEffect(() => {
+          executionOrder.push("SuspendedChild-effect");
+        }, []);
+
+        return <div data-testid="suspended">{state}</div>;
+      };
+
+      const App = () => {
+        executionOrder.push("App-render");
+
+        React.useEffect(() => {
+          executionOrder.push("App-effect");
+        }, []);
+
+        return (
+          <React.Suspense fallback={<div>Loading...</div>}>
+            <SuspendedChild />
+          </React.Suspense>
+        );
+      };
+
+      const { cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <App />
+        </GlobalStateProvider>,
+        () => {
+          // Reset execution tracking after SSR
+          executionOrder.length = 0;
+        },
+      );
+      cleanupFunctions.push(cleanup);
+
+      await waitFor(() => {
+        expect(executionOrder).toContain("onSubscribe");
+      });
+
+      // FIXED: With HydrationCheck component, the execution order is correct:
+      // 1. App-render -> App-effect
+      // 2. SuspendedChild-render -> SuspendedChild-effect (Suspense boundary hydrates)
+      // 3. HydrationCheck effect runs (hydrates last) -> onSubscribe fires
+      const onSubscribeIndex = executionOrder.indexOf("onSubscribe");
+      const suspendedChildEffectIndex = executionOrder.indexOf(
+        "SuspendedChild-effect",
+      );
+      const appEffectIndex = executionOrder.indexOf("App-effect");
+
+      // Verify correct order: onSubscribe fires AFTER all child effects complete
+      expect(onSubscribeIndex).toBeGreaterThan(appEffectIndex);
+      expect(onSubscribeIndex).toBeGreaterThan(suspendedChildEffectIndex);
+    });
+
+    test("onSubscribe fires AFTER multiple Suspense boundaries complete", async () => {
+      const executionOrder: string[] = [];
+
+      const [useTestState] = createGlobalState({
+        initialState: () => "initial",
+        onSubscribe: () => {
+          executionOrder.push("onSubscribe");
+          return () => {};
+        },
+      });
+
+      const SuspendedChild1 = () => {
+        executionOrder.push("SuspendedChild1-render");
+        const state = useTestState();
+
+        React.useEffect(() => {
+          executionOrder.push("SuspendedChild1-effect");
+        }, []);
+
+        return <div data-testid="suspended1">{state}</div>;
+      };
+
+      const SuspendedChild2 = () => {
+        executionOrder.push("SuspendedChild2-render");
+        const state = useTestState();
+
+        React.useEffect(() => {
+          executionOrder.push("SuspendedChild2-effect");
+        }, []);
+
+        return <div data-testid="suspended2">{state}</div>;
+      };
+
+      const App = () => {
+        executionOrder.push("App-render");
+
+        React.useEffect(() => {
+          executionOrder.push("App-effect");
+        }, []);
+
+        return (
+          <React.Suspense fallback={<div>Loading outer...</div>}>
+            <React.Suspense fallback={<div>Loading 1...</div>}>
+              <SuspendedChild1 />
+            </React.Suspense>
+            <React.Suspense fallback={<div>Loading 2...</div>}>
+              <SuspendedChild2 />
+            </React.Suspense>
+          </React.Suspense>
+        );
+      };
+
+      const { cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <App />
+        </GlobalStateProvider>,
+        () => {
+          // Reset execution tracking after SSR
+          executionOrder.length = 0;
+        },
+      );
+      cleanupFunctions.push(cleanup);
+
+      await waitFor(() => {
+        expect(executionOrder).toContain("onSubscribe");
+      });
+
+      // Verify onSubscribe fires after BOTH Suspense boundaries have hydrated
+      const onSubscribeIndex = executionOrder.indexOf("onSubscribe");
+      const suspendedChild1EffectIndex = executionOrder.indexOf(
+        "SuspendedChild1-effect",
+      );
+      const suspendedChild2EffectIndex = executionOrder.indexOf(
+        "SuspendedChild2-effect",
+      );
+
+      // onSubscribe should fire AFTER both children complete
+      expect(onSubscribeIndex).toBeGreaterThan(suspendedChild1EffectIndex);
+      expect(onSubscribeIndex).toBeGreaterThan(suspendedChild2EffectIndex);
+    });
   });
 
   describe("Multiple Component Cleanup Behavior", () => {
