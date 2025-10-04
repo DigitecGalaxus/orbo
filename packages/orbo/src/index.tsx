@@ -168,8 +168,8 @@ export const GlobalStateProvider = ({
         // > this time applying it as a blocking update, to ensure that every component on screen is reflecting the same
         // > version of the store
         //
-        // While this is a understandable behavior it breaks all suspense boundaries during hydration and forces them to
-        // show their fallback instead until the entire tree is hydrated and their lazy components loaded
+        // While this is a understandable behavior of useSyncExternalStore boundary we don't want that for Orbo as it forces all
+        // inflight suspense boundaries during hydration to show their fallback instead causeing layout shifts and flashings
         createElement(
           Fragment,
           { key: "hydration-check" },
