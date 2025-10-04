@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 
-/** 
+/**
  * Maximum supported depth for Suspense boundaries as in <Suspense><Suspense><Suspense>...
  * Components nested by more than this number of Suspense boundaries
  * might run into hydration errors "Warning: Expected server HTML to contain a matching <div> in <div>"
@@ -163,9 +163,9 @@ export const GlobalStateProvider = ({
         // after all user Suspense boundaries (even deeply nested ones)
         //
         // This works around a React limitation of https://react.dev/reference/react/useSyncExternalStore
-        // > React will call getSnapshot a second time just before applying changes to the DOM. 
-        // > If it returns a different value than when it was called originally, React will restart the update from scratch, 
-        // > this time applying it as a blocking update, to ensure that every component on screen is reflecting the same 
+        // > React will call getSnapshot a second time just before applying changes to the DOM.
+        // > If it returns a different value than when it was called originally, React will restart the update from scratch,
+        // > this time applying it as a blocking update, to ensure that every component on screen is reflecting the same
         // > version of the store
         //
         // While this is a understandable behavior it breaks all suspense boundaries during hydration and forces them to
@@ -173,7 +173,9 @@ export const GlobalStateProvider = ({
         createElement(
           Fragment,
           { key: "hydration-check" },
-          Array.from({ length: MAX_SUPPORTED_SUSPENSE_DEPTH }).reduce<React.ReactElement>(
+          Array.from({
+            length: MAX_SUPPORTED_SUSPENSE_DEPTH,
+          }).reduce<React.ReactElement>(
             (child) =>
               createElement(Suspense, { fallback: null, children: child }),
             createElement(HydrationCheck),
