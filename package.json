@@ -16,7 +16,8 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "dev:example": "pnpm --filter orbo-example-base dev",
+    "dev:example:base": "pnpm --filter orbo-example-base dev",
+    "dev:example:suspense": "pnpm --filter orbo-example-suspense dev",
     "test": "pnpm --filter orbo test",
     "test:run": "pnpm --filter orbo test:run",
     "typecheck": "pnpm -r typecheck",
