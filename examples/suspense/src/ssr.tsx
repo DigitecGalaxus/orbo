@@ -4,19 +4,12 @@ import { Writable } from "stream";
 import type HtmlWebpackPlugin from "html-webpack-plugin";
 import App from "./_app";
 
-interface RequireContext {
-  (id: string): any;
-  keys(): string[];
-  resolve(id: string): string;
-  id: string;
-}
-
 declare const require: {
   context(
     directory: string,
     useSubdirectories?: boolean,
     regExp?: RegExp
-  ): RequireContext;
+  ): void;
 };
 
 /** Executed by html-webpack-plugin (see rspack.config.ts) */
@@ -27,7 +20,7 @@ export default async function ssrTemplate(
     const options = templateParameters.htmlWebpackPlugin?.options || {};
     try {
       // Use require.context to pre-bundle all tsx files including lazy-loaded ones
-      const requireContext: RequireContext = require.context(
+      require.context(
         "./",
         true,
         /\.tsx$/,

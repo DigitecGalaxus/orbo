@@ -9,7 +9,7 @@ function App() {
       <GlobalStateProvider initialValues={{}}>
         <Page />
       </GlobalStateProvider>
-      </StrictMode>
+    </StrictMode>
   );
 }
 

@@ -1,7 +1,6 @@
 import {
   createContext,
   memo,
-  startTransition,
   use,
   useCallback,
   useDeferredValue,
@@ -136,15 +135,12 @@ export const GlobalStateProvider = memo(
       _isHydrated: false,
     }).current;
     useEffect(() => {
-      console.log("Hydration complete, isHydrated:", isHydrated);
       if (isHydrated) {
-        startTransition(() => {
-          contextData._isHydrated = true;
-          // Trigger onSubscribe now that hydration is done
-          contextData._subContexts.forEach((subContext) =>
-            subContext._triggerOnSubscribe(),
-          );
-        });
+        contextData._isHydrated = true;
+        // Trigger onSubscribe now that hydration is done
+        contextData._subContexts.forEach((subContext) =>
+          subContext._triggerOnSubscribe(),
+        );
       }
     }, [isHydrated]);
     return (
