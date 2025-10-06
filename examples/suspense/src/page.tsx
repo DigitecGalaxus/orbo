@@ -59,6 +59,7 @@ function EagerComponent() {
         backgroundColor: darkMode ? "#1a1a1a" : "#f5f5f5",
         color: darkMode ? "#ffffff" : "#000000",
       }}
+      data-testid="eager-component"
     >
       <h3>Eager Component</h3>
       <p>This component loads immediately, but shares state with the lazy component.</p>
