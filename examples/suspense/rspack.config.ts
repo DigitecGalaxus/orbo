@@ -50,6 +50,7 @@ const config: Configuration = {
       title: "Orbo - Suspense Demo",
       template: "./src/ssr.tsx",
       sourceFile: "src/_app.tsx",
+      minify: false,
     }),
   ],
   mode: "development",
