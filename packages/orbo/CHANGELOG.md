@@ -1,5 +1,12 @@
 # orbo
 
+## 3.5.0
+
+### Minor Changes
+
+- d8afde3: Fix onSubscribe callbacks firing too early during React 19 hydration with Suspense, which caused hydration errors when syncing state with browser apis
+- 905ad09: add api to read initialValues from context
+
 ## 3.4.0
 
 ### Minor Changes
