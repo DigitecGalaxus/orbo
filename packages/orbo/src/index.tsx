@@ -335,4 +335,5 @@ export const globalStateMemo = <T,>(
 };
 
 /** Hook to access the initial values passed to the nearest GlobalStateProvider */
-export const useInitialValues = (): Readonly<GlobalStateInitialValues> => use(GlobalStateContext)!._initialValues;
+export const useInitialValues = (): Readonly<GlobalStateInitialValues> =>
+  use(GlobalStateContext)!._initialValues;
