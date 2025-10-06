@@ -108,75 +108,71 @@ interface SubContext<T> {
  * }
  * ```
  */
-export const GlobalStateProvider = memo(
-  ({
-    initialValues,
-    ...props
-  }: {
-    initialValues: GlobalStateInitialValues;
-    children: React.ReactNode;
-  }) => {
-    /**
-     * Hydration detection using useDeferredValue + useSyncExternalStore.
-     *
-     * - useSyncExternalStore (https://react.dev/reference/react/useSyncExternalStore):
-     *   Detects SSR vs client: false during SSR, true on client
-     *
-     * - useDeferredValue (https://react.dev/reference/react/useDeferredValue):
-     *   Defers this update to low priority, waiting for high priority renders
-     *
-     * CRITICAL: This alone is NOT enough! Must be combined with HydrationStateContext
-     * wrapper to ensure correct effect timing with Suspense boundaries.
-     *
-     * Together they guarantee onSubscribe only fires after complete hydration.
-     */
-    const isHydrated = useDeferredValue(
-      useSyncExternalStore(
-        subscribeToNothing,
-        getClientHydrationState,
-        getServerHydrationState,
-      ),
-    );
-    const contextData = useRef({
-      _initialValues: initialValues,
-      _subContexts: new Map(),
-      _isHydrated: false,
-    }).current;
-    /**
-     * Trigger all onSubscribe callbacks after complete hydration.
-     *
-     * Flow:
-     * 1. SSR/initial hydration: _isHydrated = false, components subscribe but onSubscribe waits
-     * 2. All Suspense boundaries resolve: isHydrated → true (via useDeferredValue)
-     * 3. HydrationStateContext ensures this effect fires AFTER all children's effects
-     * 4. This sets _isHydrated = true and triggers ALL onSubscribe callbacks simultaneously
-     *
-     * Result: All components sync with external sources (localStorage, etc.) in one batch
-     * after full hydration, preventing hydration mismatches
-     *
-     * After the first hydration, isHydrated remains true for the lifetime of the app allowing
-     * to skip the initializing with the outdated server state and directly call onSubscribe
-     * preventing double renders on client-side navigations
-     */
-    useEffect(() => {
-      if (isHydrated) {
-        contextData._isHydrated = true;
-        contextData._subContexts.forEach((subContext) =>
-          subContext._triggerOnSubscribe(),
-        );
-      }
-    }, [isHydrated]);
-    return (
-      <GlobalStateContext value={contextData}>
-        <HydrationStateContext value={isHydrated}>
-          {props.children}
-        </HydrationStateContext>
-      </GlobalStateContext>
-    );
-  },
-  // Initial value changes should never trigger a rerender
-  () => true,
-);
+export const GlobalStateProvider = ({
+  initialValues,
+  ...props
+}: {
+  initialValues: GlobalStateInitialValues;
+  children: React.ReactNode;
+}) => {
+  /**
+   * Hydration detection using useDeferredValue + useSyncExternalStore.
+   *
+   * - useSyncExternalStore (https://react.dev/reference/react/useSyncExternalStore):
+   *   Detects SSR vs client: false during SSR, true on client
+   *
+   * - useDeferredValue (https://react.dev/reference/react/useDeferredValue):
+   *   Defers this update to low priority, waiting for high priority renders
+   *
+   * CRITICAL: This alone is NOT enough! Must be combined with HydrationStateContext
+   * wrapper to ensure correct effect timing with Suspense boundaries.
+   *
+   * Together they guarantee onSubscribe only fires after complete hydration.
+   */
+  const isHydrated = useDeferredValue(
+    useSyncExternalStore(
+      subscribeToNothing,
+      getClientHydrationState,
+      getServerHydrationState,
+    ),
+  );
+  const contextData = useRef({
+    _initialValues: initialValues,
+    _subContexts: new Map(),
+    _isHydrated: false,
+  }).current;
+  /**
+   * Trigger all onSubscribe callbacks after complete hydration.
+   *
+   * Flow:
+   * 1. SSR/initial hydration: _isHydrated = false, components subscribe but onSubscribe waits
+   * 2. All Suspense boundaries resolve: isHydrated → true (via useDeferredValue)
+   * 3. HydrationStateContext ensures this effect fires AFTER all children's effects
+   * 4. This sets _isHydrated = true and triggers ALL onSubscribe callbacks simultaneously
+   *
+   * Result: All components sync with external sources (localStorage, etc.) in one batch
+   * after full hydration, preventing hydration mismatches
+   *
+   * After the first hydration, isHydrated remains true for the lifetime of the app allowing
+   * to skip the initializing with the outdated server state and directly call onSubscribe
+   * preventing double renders on client-side navigations
+   */
+  useEffect(() => {
+    if (isHydrated) {
+      contextData._isHydrated = true;
+      contextData._subContexts.forEach((subContext) =>
+        subContext._triggerOnSubscribe(),
+      );
+    }
+  }, [isHydrated]);
+  return (
+    <GlobalStateContext value={contextData}>
+      <HydrationStateContext value={isHydrated}>
+        {props.children}
+      </HydrationStateContext>
+    </GlobalStateContext>
+  );
+};
 
 /**
  * Creates a pair of hooks for managing global state that is shared across components.
