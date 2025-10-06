@@ -31,5 +31,8 @@
   "devDependencies": {
     "@changesets/cli": "^2.29.7",
     "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=22.20.0"
   }
 }
