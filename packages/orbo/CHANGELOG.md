@@ -1,5 +1,11 @@
 # orbo
 
+## 3.5.1
+
+### Patch Changes
+
+- c543c27: Fix issue with rerender optimization
+
 ## 3.5.0
 
 ### Minor Changes
