@@ -23,7 +23,7 @@ Every new feature adds another provider, every page loads all state logic regard
 
 Orbo takes a different approach: **What if global state was as easy as useState, automatically lazy initialized, and completely decoupled from your app shell?**
 
-Built from the ground up for modern React applications that demand both performance and developer experience. 140 lines of code. Zero dependencies. TypeScript-first
+Built from the ground up for modern React applications that demand both performance and developer experience. ~340 lines of readable TypeScript source, minified to just 1KB. Zero dependencies. TypeScript-first
 
 > [!WARNING]
 > Orbo is designed specifically for **singleton global states** (dark mode, user preferences, feature flags, ...) -> It is **not a full state management solution** like Redux or Zustand
@@ -35,7 +35,7 @@ Built from the ground up for modern React applications that demand both performa
 - ⚡ **useState-familiar API** - `const count = useCount()` and `setCount(5)` - that's it
 - 🔒 **SSR safe** - No hydration mismatches, no useEffect hacks
 - 🎯 **TypeScript first** - Compile-time safety with module augmentation
-- 🪶 **Minimal** - 140 lines, zero dependencies, tree-shakeable
+- 🪶 **Minimal** - 1KB minified, zero dependencies, tree-shakeable
 
 ## Installation
 
@@ -86,6 +86,22 @@ const [useDarkMode, useSetDarkMode] = createGlobalState({
 });
 
 export { useDarkMode, useSetDarkMode };
+
+// ⏱️ For SSR apps with localStorage sync:
+const [useDarkMode, useSetDarkMode] = createGlobalState({
+  initialState: () => false,  // ← Used during SSR & hydration (avoids mismatch)
+  onSubscribe: (setState) => { // ← Fires AFTER all components hydrate
+    // Safe to read localStorage here - hydration is complete
+    setState(localStorage.getItem('darkMode') === 'true');
+
+    // Optional: sync across browser tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'darkMode') setState(e.newValue === 'true');
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }
+});
 
 // DarkModeToggle.tsx
 import { useDarkMode, useSetDarkMode } from "./useDarkMode";
@@ -197,6 +213,69 @@ This results in:
 - Better maintainability through **colocation**
 - Better reliability through **TypeScript contracts**
 
+## SSR & Hydration Strategy
+
+Orbo's hydration strategy ensures zero hydration mismatches when working with client-only APIs like localStorage, even with React 19's selective hydration and Suspense boundaries.
+
+### The Challenge
+
+When server-rendering with client-side state (dark mode from localStorage, user preferences, etc.), you face a fundamental conflict:
+- Server doesn't have access to localStorage → renders with default state
+- Client needs to read localStorage → but doing so during hydration causes mismatches
+
+Traditional solutions use `useEffect` hacks that cause flashing or double renders. Orbo solves this with a two-phase initialization strategy.
+
+### How It Works
+
+Orbo uses React's [effect timing](https://react.dev/learn/synchronizing-with-effects) and [deferred values](https://react.dev/reference/react/useDeferredValue) to coordinate when external state syncs happen. Here's the flow:
+
+```mermaid
+sequenceDiagram
+    participant Server
+    participant Browser
+    participant React
+    participant Orbo
+    participant External as External APIs<br/>(localStorage, etc)
+
+    Note over Server: SSR Phase
+    Server->>Browser: HTML with initialState values
+
+    Note over Browser,React: Hydration Phase
+    Browser->>React: hydrateRoot()
+    React->>Orbo: Mount components (isHydrated=false)
+    Orbo->>Orbo: Use initialState for all components
+    Note over React,Orbo: Lazy components loading...<br/>Suspense boundaries resolving...
+
+    Note over React,Orbo: Hydration Complete
+    React->>Orbo: All boundaries resolved
+    Orbo->>Orbo: isHydrated=true (via useDeferredValue)
+
+    Note over Orbo,External: Sync Phase
+    Orbo->>Orbo: Trigger ALL onSubscribe callbacks
+    Orbo->>External: Read localStorage, subscribe to changes
+    External->>Orbo: setState with synced values
+    Orbo->>React: Update all components simultaneously
+
+    Note over Browser: Client Navigation
+    Browser->>React: Navigate to new page
+    React->>Orbo: Mount new components (isHydrated=true)
+    Orbo->>External: onSubscribe fires immediately
+```
+
+### Key Phases
+
+1. **SSR Phase**: Server renders with `initialState` values (no localStorage access)
+2. **Hydration Phase**: Client mounts components using same `initialState` (matches server HTML perfectly)
+3. **Suspense Resolution**: React waits for all lazy-loaded components to hydrate
+4. **Sync Phase**: After complete hydration, `onSubscribe` callbacks fire simultaneously across all components
+5. **Client Navigation**: On subsequent navigations, `onSubscribe` fires immediately (no hydration needed)
+
+This approach guarantees:
+- ✅ Zero hydration mismatches (server and client render identically)
+- ✅ No double renders (state updates happen in a single batch after hydration)
+- ✅ Consistent state (all components sync simultaneously, never partially)
+- ✅ Works with Suspense (waits for lazy components via `useDeferredValue`)
+
 ## API Reference
 
 ### `createGlobalState<T>(config)`
@@ -205,7 +284,7 @@ Creates a pair of hooks for reading and writing global state.
 
 ```tsx
 const [useValue, useSetValue] = createGlobalState({
-  initialState: (initialValues) => computeInitialValue(initialValues),
+  initialState: (initialValues, isHydrated) => computeInitialValue(initialValues, isHydrated),
 
   // Optional: sync with external sources (client-side only)
   onSubscribe: (setState, currentState) => {
@@ -269,11 +348,10 @@ Root provider that manages state isolation and provides initial values
 
 ## Examples
 
-Check out the `/examples` directory for complete implementations:
+Check out the [examples directory](https://github.com/DigitecGalaxus/orbo/tree/main/examples) for complete implementations:
 
-- **Dark Mode** - Theme switching with cookie persistence
-- **User State** - Authentication state management
-- **Feature Flags** - A/B testing and feature toggling
+- **[base](https://github.com/DigitecGalaxus/orbo/tree/main/examples/base)** - Counter and timer examples showing basic state management and cleanup with `onSubscribe`
+- **[suspense](https://github.com/DigitecGalaxus/orbo/tree/main/examples/suspense)** - Dark mode with SSR, Suspense boundaries, and localStorage sync - demonstrates the complete hydration strategy described above with zero hydration mismatches
 
 ## License
 
