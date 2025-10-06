@@ -153,7 +153,7 @@ export const GlobalStateProvider = memo(
      *
      * Result: All components sync with external sources (localStorage, etc.) in one batch
      * after full hydration, preventing hydration mismatches
-     * 
+     *
      * After the first hydration, isHydrated remains true for the lifetime of the app allowing
      * to skip the initializing with the outdated server state and directly call onSubscribe
      * preventing double renders on client-side navigations
