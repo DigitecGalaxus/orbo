@@ -20,6 +20,7 @@
     "dev:example:suspense": "pnpm --filter orbo-example-suspense dev",
     "test": "pnpm --filter orbo test",
     "test:run": "pnpm --filter orbo test:run",
+    "test:e2e": "pnpm --filter orbo-e2e test",
     "typecheck": "pnpm -r typecheck",
     "prettier": "pnpm run --recursive --if-present prettier",
     "clean": "pnpm -r clean",

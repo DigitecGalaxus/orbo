@@ -14,6 +14,7 @@ export function LazyChild() {
         backgroundColor: darkMode ? "#1a1a1a" : "#f5f5f5",
         color: darkMode ? "#ffffff" : "#000000",
       }}
+      data-testid="lazy-component"
     >
       <h3>Lazy Loaded Component</h3>
       <p>This component was loaded after a 3-second delay during hydration.</p>

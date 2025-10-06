@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["orbo-example-base", "orbo-example-suspense"]
+  "ignore": ["orbo-example-base", "orbo-example-suspense", "orbo-e2e"]
 }
