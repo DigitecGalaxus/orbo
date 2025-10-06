@@ -629,13 +629,6 @@ describe("Orbo - createGlobalState", () => {
     });
   });
 
-  describe("onSubscribe SSR Behavior", () => {
-    test.skip("onSubscribe does not run during server-side rendering", () => {
-      // This test is skipped because SSR simulation interferes with other tests
-      // The SSR safety is tested by the typeof window !== 'undefined' check in the implementation
-    });
-  });
-
   describe("onSubscribe Reinitialization Behavior", () => {
     test("onSubscribe is called again when components remount with persistState: true", () => {
       const subscribeSpy = vi.fn(() => {
@@ -752,53 +745,7 @@ describe("Orbo - createGlobalState", () => {
       ).toHaveTextContent("42"); // State persisted
     });
 
-    test.skip("cleanup is NOT called when persistState is true (default)", async () => {
-      const cleanupSpy = vi.fn();
-      const [useCounter] = createGlobalState({
-        initialState: () => 0,
-        onSubscribe: () => {
-          return cleanupSpy;
-        },
-        persistState: true,
-      });
-
-      const TestComponent = () => {
-        const counter = useCounter();
-        return <div data-testid="counter">{counter}</div>;
-      };
-
-      const ParentComponent = () => {
-        const [showComponent, setShowComponent] = useState(true);
-        return (
-          <div>
-            <button
-              data-testid="toggle"
-              onClick={() => setShowComponent(!showComponent)}
-            >
-              Toggle Component
-            </button>
-            {showComponent && <TestComponent />}
-          </div>
-        );
-      };
-
-      const { container } = render(
-        <GlobalStateProvider initialValues={{}}>
-          <ParentComponent />
-        </GlobalStateProvider>,
-      );
-
-      expect(
-        container.querySelector('[data-testid="counter"]'),
-      ).toHaveTextContent("0");
-
-      fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
-      expect(container.querySelector('[data-testid="counter"]')).toBeNull();
-
-      expect(cleanupSpy).not.toHaveBeenCalled();
-    });
-
-    test.skip("cleanup only happens when last component unmounts and persistState is false", async () => {
+    test("cleanup only happens when last component unmounts", async () => {
       const cleanupSpy = vi.fn();
       const [useCounter] = createGlobalState({
         initialState: () => 0,
