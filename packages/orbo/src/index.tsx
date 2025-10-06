@@ -1,11 +1,13 @@
 import {
   createContext,
-  createElement,
+  memo,
   use,
   useCallback,
+  useDeferredValue,
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 /**
@@ -90,6 +92,10 @@ interface SubContext<T> {
 }
 
 const GlobalStateContext = createContext<GlobalStateContextData | null>(null);
+const subscribeToNothing = () => () => {};
+const getClientHydrationState = () => true;
+const getServerHydrationState = () => false;
+const HydrationStateContext = createContext<boolean>(false);
 
 /**
  * Root provider that enables global state management for child components.
@@ -108,32 +114,46 @@ const GlobalStateContext = createContext<GlobalStateContextData | null>(null);
  * }
  * ```
  */
-export const GlobalStateProvider = ({
-  initialValues,
-  ...props
-}: {
-  initialValues: GlobalStateInitialValues;
-  children: React.ReactNode;
-}) => {
-  const contextData = useRef<GlobalStateContextData>({
-    _initialValues: initialValues,
-    _subContexts: new Map(),
-    _isHydrated: false,
-  }).current;
-
-  useEffect(() => {
-    // Mark as hydrated after the first client-side render
-    // to distinguish global state initializations during hydration
-    // from later state initializations caused by user interactions
-    contextData._isHydrated = true;
-    // Trigger onSubscribe now that hydration is done
-    contextData._subContexts.forEach((subContext) =>
-      subContext._triggerOnSubscribe(),
+export const GlobalStateProvider = memo(
+  ({
+    initialValues,
+    ...props
+  }: {
+    initialValues: GlobalStateInitialValues;
+    children: React.ReactNode;
+  }) => {
+    const isHydrated = useDeferredValue(
+      useSyncExternalStore(
+        subscribeToNothing,
+        getClientHydrationState,
+        getServerHydrationState,
+      ),
     );
-  }, []);
-
-  return createElement(GlobalStateContext, { ...props, value: contextData });
-};
+    const contextData = useRef({
+      _initialValues: initialValues,
+      _subContexts: new Map(),
+      _isHydrated: false,
+    }).current;
+    useEffect(() => {
+      if (isHydrated) {
+        contextData._isHydrated = true;
+        // Trigger onSubscribe now that hydration is done
+        contextData._subContexts.forEach((subContext) =>
+          subContext._triggerOnSubscribe(),
+        );
+      }
+    }, [isHydrated]);
+    return (
+      <GlobalStateContext value={contextData}>
+        <HydrationStateContext value={isHydrated}>
+          {props.children}
+        </HydrationStateContext>
+      </GlobalStateContext>
+    );
+  },
+  // Initial value changes should never trigger a rerender
+  () => true,
+);
 
 /**
  * Creates a pair of hooks for managing global state that is shared across components.

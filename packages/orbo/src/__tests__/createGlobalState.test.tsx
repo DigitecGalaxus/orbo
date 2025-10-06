@@ -1046,6 +1046,145 @@ describe("Orbo - createGlobalState", () => {
         "child-useEffect -> onSubscribe",
       );
     });
+
+    test("onSubscribe fires AFTER partial hydration with Suspense completes", async () => {
+      const executionOrder: string[] = [];
+
+      const [useTestState] = createGlobalState({
+        initialState: () => "initial",
+        onSubscribe: () => {
+          executionOrder.push("onSubscribe");
+          return () => {};
+        },
+      });
+
+      const SuspendedChild = () => {
+        executionOrder.push("SuspendedChild-render");
+        const state = useTestState();
+
+        React.useEffect(() => {
+          executionOrder.push("SuspendedChild-effect");
+        }, []);
+
+        return <div data-testid="suspended">{state}</div>;
+      };
+
+      const App = () => {
+        executionOrder.push("App-render");
+
+        React.useEffect(() => {
+          executionOrder.push("App-effect");
+        }, []);
+
+        return (
+          <React.Suspense fallback={<div>Loading...</div>}>
+            <SuspendedChild />
+          </React.Suspense>
+        );
+      };
+
+      const { cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <App />
+        </GlobalStateProvider>,
+        () => {
+          // Reset execution tracking after SSR
+          executionOrder.length = 0;
+        },
+      );
+      cleanupFunctions.push(cleanup);
+
+      await waitFor(() => {
+        expect(executionOrder).toContain("onSubscribe");
+      });
+
+      expect(executionOrder).toEqual([
+        "App-render",
+        "App-effect",
+        "SuspendedChild-render",
+        "SuspendedChild-effect",
+        "onSubscribe",
+      ]);
+    });
+
+    test("onSubscribe fires AFTER multiple Suspense boundaries complete", async () => {
+      const executionOrder: string[] = [];
+
+      const [useTestState] = createGlobalState({
+        initialState: () => "initial",
+        onSubscribe: () => {
+          executionOrder.push("onSubscribe");
+          return () => {};
+        },
+      });
+
+      const SuspendedChild1 = () => {
+        executionOrder.push("SuspendedChild1-render");
+        const state = useTestState();
+
+        React.useEffect(() => {
+          executionOrder.push("SuspendedChild1-effect");
+        }, []);
+
+        return <div data-testid="suspended1">{state}</div>;
+      };
+
+      const SuspendedChild2 = () => {
+        executionOrder.push("SuspendedChild2-render");
+        const state = useTestState();
+
+        React.useEffect(() => {
+          executionOrder.push("SuspendedChild2-effect");
+        }, []);
+
+        return <div data-testid="suspended2">{state}</div>;
+      };
+
+      const App = () => {
+        executionOrder.push("App-render");
+
+        React.useEffect(() => {
+          executionOrder.push("App-effect");
+        }, []);
+
+        return (
+          <React.Suspense fallback={<div>Loading outer...</div>}>
+            <React.Suspense fallback={<div>Loading 1...</div>}>
+              <SuspendedChild1 />
+            </React.Suspense>
+            <React.Suspense fallback={<div>Loading 2...</div>}>
+              <SuspendedChild2 />
+            </React.Suspense>
+          </React.Suspense>
+        );
+      };
+
+      const { cleanup } = await renderAndHydrate(
+        <GlobalStateProvider initialValues={{}}>
+          <App />
+        </GlobalStateProvider>,
+        () => {
+          // Reset execution tracking after SSR
+          executionOrder.length = 0;
+        },
+      );
+      cleanupFunctions.push(cleanup);
+
+      await waitFor(() => {
+        expect(executionOrder).toContain("onSubscribe");
+      });
+
+      // Verify onSubscribe fires after BOTH Suspense boundaries have hydrated
+      expect(executionOrder).toEqual([
+        "App-render",
+        "App-effect",
+        "SuspendedChild1-render",
+        "SuspendedChild1-effect",
+        "SuspendedChild2-render",
+        "SuspendedChild2-effect",
+        "onSubscribe",
+      ]);
+    });
   });
 
   describe("Multiple Component Cleanup Behavior", () => {
