@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - main
+      - "3.4.x" # backported changes from 3.5.0
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
