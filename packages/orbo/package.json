@@ -57,7 +57,7 @@
     "@types/node": "24.3.3",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.2",
-    "happy-dom": "^18.0.1",
+    "happy-dom": "^20.0.0",
     "prettier": "^3.6.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
