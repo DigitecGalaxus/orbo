@@ -1384,4 +1384,71 @@ describe("Orbo - createGlobalState", () => {
       });
     });
   });
+
+  describe("State is correct across components", () => {
+    test("State set during unmount is applied to newly mounted component", async () => {
+      const [useGlobalState, useSetGlobalState] = createGlobalState({
+        initialState: () => false,
+        persistState: true,
+      });
+
+      const UnmountingComponent = () => {
+        const setState = useSetGlobalState();
+        React.useEffect(() => {
+          return () => {
+            // On unmount, set state to true
+            setState(true);
+          };
+        }, []);
+        return null;
+      };
+
+      const MountingComponent = () => {
+        const state = useGlobalState();
+        return (
+          <div data-testid="mounting">State is {state ? "true" : "false"}</div>
+        );
+      };
+
+      const PersistentComponent = () => {
+        const state = useGlobalState();
+        return (
+          <div data-testid="persistent">
+            State is {state ? "true" : "false"}
+          </div>
+        );
+      };
+
+      const TestContainer = () => {
+        const [toggled, setToggled] = React.useState(false);
+        return (
+          <GlobalStateProvider initialValues={{}}>
+            <button data-testid="toggle" onClick={() => setToggled(true)}>
+              Toggle Component
+            </button>
+            <PersistentComponent />
+            {toggled ? <MountingComponent /> : <UnmountingComponent />}
+          </GlobalStateProvider>
+        );
+      };
+
+      // Context instance
+      const { container } = await renderAndHydrate(<TestContainer />);
+
+      // emulate click on the button to change theme
+      act(() => {
+        fireEvent.click(container.querySelector('[data-testid="toggle"]')!);
+      });
+
+      // wait for re-render
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-testid="mounting"]'),
+        ).toHaveTextContent("State is true");
+        expect(
+          container.querySelector('[data-testid="persistent"]'),
+        ).toHaveTextContent("State is true");
+      });
+    });
+  });
 });
