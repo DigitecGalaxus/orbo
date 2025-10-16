@@ -1,5 +1,11 @@
 # orbo
 
+## 3.5.2
+
+### Patch Changes
+
+- 393cfd1: Fix inconsistent state after setting a state in a component cleanup function
+
 ## 3.5.1
 
 ### Patch Changes
