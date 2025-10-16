@@ -246,10 +246,17 @@ export const createGlobalState = <T,>(config: GlobalStateConfig<T>) => {
         () => initializeSubContext(globalStateContext)._value,
       );
       // Rerender if the global state changes
-      useEffect(
-        () => initializeSubContext(globalStateContext)._subscribe(setState),
-        [],
-      );
+      useEffect(() => {
+        const subContext = initializeSubContext(globalStateContext);
+
+        // Sync state if it changed before the setState was subscribed.
+        // This occurs when the state is updated during a cleanup function of another component
+        // while this component was mounting.
+        if (state !== subContext._value) {
+          setState(subContext._value);
+        }
+        return subContext._subscribe(setState);
+      }, []);
       return state;
     },
     // Write to global state
